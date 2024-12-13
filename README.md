@@ -14,23 +14,25 @@ Sub UpdateQuantity()
     
     ' 활성화 시트의 마지막 행 찾기
     lastRow = wsActive.Cells(wsActive.Rows.Count, "A").End(xlUp).Row
+    Debug.Print "Last Row: " & lastRow
     
     ' 활성화 시트의 데이터를 순회
     For i = 2 To lastRow
         code = wsActive.Cells(i, 1).Value
-        
-        ' 길이 값을 안전하게 가져오기 위해 오류 처리를 추가
         On Error Resume Next
         length = wsActive.Cells(i, 2).Value
         On Error GoTo 0
-        
         elevation = wsActive.Cells(i, 3).Value
+        
+        Debug.Print "Processing Row: " & i & ", Code: " & code & ", Length: " & length & ", Elevation: " & elevation
         
         ' 타겟 시트에서 일치하는 code의 행 찾기
         targetRow = 0
         On Error Resume Next
         targetRow = Application.WorksheetFunction.Match(code, wsTarget.Columns("F"), 0)
         On Error GoTo 0
+        
+        Debug.Print "Target Row for Code " & code & ": " & targetRow
         
         ' 일치하는 행이 있을 경우
         If targetRow > 0 Then
@@ -49,10 +51,17 @@ Sub UpdateQuantity()
                     colToUpdate = ""
             End Select
             
+            Debug.Print "Column to Update for Elevation " & elevation & ": " & colToUpdate
+            
             If colToUpdate <> "" Then
                 ' 기존 값과 새 값을 합산하여 입력
                 wsTarget.Cells(targetRow, colToUpdate).Value = wsTarget.Cells(targetRow, colToUpdate).Value + length
+                Debug.Print "Updated " & colToUpdate & targetRow & " with Length: " & length
             End If
+        Else
+            Debug.Print "No matching row found for Code: " & code
         End If
     Next i
+    
+    Debug.Print "Macro Execution Completed"
 End Sub
