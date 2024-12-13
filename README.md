@@ -67,8 +67,8 @@ Sub UpdateQuantity()
             End Select
             
             If colToUpdate <> "" Then
-                ' 기존 값과 새 값을 합산하여 입력
-                wsTarget.Cells(targetRow, colToUpdate).Value = wsTarget.Cells(targetRow, colToUpdate).Value + length
+                ' 길이를 합산하지 않고 그대로 입력
+                wsTarget.Cells(targetRow, colToUpdate).Value = length
             End If
         End If
     Next i
