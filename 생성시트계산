@@ -178,4 +178,8 @@ Public Function CleanString(inputString As String) As String
     inputString = Trim(inputString) ' 앞뒤 공백 제거
     inputString = Replace(inputString, Chr(160), " ") ' 비정상적인 공백 문자를 일반 공백으로 변경
     inputString = Replace(inputString, vbCr, "") ' 캐리지 리턴 제거
-    inputString = Replace(inputString, vbLf, "")
+    inputString = Replace(inputString, vbLf, "") ' 줄 바꿈 제거
+    inputString = Replace(inputString, vbTab, "") ' 탭 제거
+    CleanString = LCase(inputString) ' 소문자로 변환
+    On Error GoTo 0
+End Function
