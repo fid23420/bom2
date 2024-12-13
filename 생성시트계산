@@ -1,0 +1,164 @@
+Public Sub 생성시트계산()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim key As String
+    Dim dataDict As Object
+    Dim rowIndex As Long
+    Dim keysAdded As Object
+    Dim lengthValue As Double
+
+    ' Dictionary 생성
+    Set dataDict = CreateObject("Scripting.Dictionary")
+    Set keysAdded = CreateObject("Scripting.Dictionary")
+
+    ' 조건 시트에서 "시트 제외" 헤더 열 찾기
+    Dim conditionWs As Worksheet
+    Dim excludeSheets As Collection
+    Set excludeSheets = New Collection
+    On Error Resume Next
+    Set conditionWs = ThisWorkbook.Worksheets("조건")
+    If Not conditionWs Is Nothing Then
+        Dim excludeCol As Long
+        excludeCol = 0
+        ' "시트 제외" 헤더 열 찾기
+        Dim headerCell As Range
+        For Each headerCell In conditionWs.Rows(1).Cells
+            If LCase(Trim(headerCell.Value)) = "시트 제외" Then
+                excludeCol = headerCell.Column
+                Exit For
+            End If
+        Next headerCell
+        
+        ' "시트 제외" 열 데이터 수집
+        If excludeCol > 0 Then
+            Dim excludeRow As Long
+            For excludeRow = 2 To conditionWs.Cells(conditionWs.Rows.Count, excludeCol).End(xlUp).Row
+                If Len(Trim(conditionWs.Cells(excludeRow, excludeCol).Value)) > 0 Then
+                    excludeSheets.Add Trim(conditionWs.Cells(excludeRow, excludeCol).Value)
+                End If
+            Next excludeRow
+        End If
+    End If
+    On Error GoTo 0
+
+    ' 모든 시트를 순회하며 "GeneratedByMacro" 태그가 있는 시트만 선택
+    For Each ws In ThisWorkbook.Worksheets
+        ' "시트 제외" 목록에 있는 시트를 건너뛰기 위한 조건
+        Dim isExcluded As Boolean
+        isExcluded = False
+        For Each sheetName In excludeSheets
+            If ws.name = sheetName Then
+                isExcluded = True
+                Exit For
+            End If
+        Next sheetName
+        If isExcluded Then GoTo NextSheet
+        
+        On Error Resume Next
+        If ws.CustomProperties("GeneratedByMacro").Value = "True" Then
+            On Error GoTo 0
+            
+            ' 헤더 위치 동적으로 찾기
+            Dim itemCol As Long, lengthCol As Long, nameCol As Long, utilityCol As Long, widthCol As Long, elevationCol As Long
+            itemCol = 0: lengthCol = 0: nameCol = 0: utilityCol = 0: widthCol = 0: elevationCol = 0
+            
+            ' 첫 행에서 각 헤더를 찾음
+            For Each headerCell In ws.Rows(1).Cells
+                Select Case LCase(Trim(headerCell.Value))
+                    Case "item": itemCol = headerCell.Column
+                    Case "length": lengthCol = headerCell.Column
+                    Case "name": nameCol = headerCell.Column
+                    Case "utility": utilityCol = headerCell.Column
+                    Case "width/diameter": widthCol = headerCell.Column
+                    Case "elevation": elevationCol = headerCell.Column
+                End Select
+            Next headerCell
+            
+            ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
+            If itemCol = 0 Or lengthCol = 0 Or nameCol = 0 Or utilityCol = 0 Or widthCol = 0 Or elevationCol = 0 Then
+                MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.name, vbExclamation
+                GoTo NextSheet
+            End If
+            
+            ' 시트의 마지막 행 찾기
+            lastRow = ws.Cells(ws.Rows.Count, nameCol).End(xlUp).Row
+            
+            ' 키 생성 및 Length 합산
+            dataDict.RemoveAll
+            For rowIndex = 2 To lastRow
+                If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then ' "Name" 열이 비어 있지 않은 경우
+                    ' 키 생성: 각 값을 공백 제거하고 연결하여 고유 키 생성
+                    key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, elevationCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, utilityCol).Value)
+                    
+                    ' Length 값을 가져옴
+                    If IsNumeric(ws.Cells(rowIndex, lengthCol).Value) Then
+                        lengthValue = CDbl(ws.Cells(rowIndex, lengthCol).Value)
+                        
+                        ' "Item"이 "Pipe"인 경우 Length 값을 1000으로 나누고 소수점 3번째 자리 이후 버리고 소수점 첫째 자리까지 반올림
+                        If Trim(LCase(ws.Cells(rowIndex, itemCol).Value)) = "pipe" Then
+                            lengthValue = lengthValue / 1000
+                            lengthValue = WorksheetFunction.RoundDown(lengthValue * 100, 0) / 100
+                            lengthValue = WorksheetFunction.Round(lengthValue, 1)
+                        End If
+                        
+                        ' 합산 로직 수행
+                        If dataDict.exists(key) Then
+                            dataDict(key) = dataDict(key) + lengthValue
+                        Else
+                            dataDict.Add key, lengthValue
+                        End If
+                    End If
+                End If
+            Next rowIndex
+            
+            ' 중복을 제거하고 Length 합산 결과를 기존 셀에 반영
+            keysAdded.RemoveAll
+            rowIndex = 2 ' 첫 번째 데이터 행부터 시작
+            Do While rowIndex <= lastRow
+                If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then
+                    ' 키 생성
+                    key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, elevationCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, utilityCol).Value)
+                    
+                    ' 해당 키가 이미 처리되었는지 확인
+                    If Not keysAdded.exists(key) Then
+                        ' 합산된 Length 값을 업데이트
+                        ws.Cells(rowIndex, lengthCol).Value = dataDict(key)
+                        keysAdded.Add key, True
+                        rowIndex = rowIndex + 1
+                    Else
+                        ' 중복된 행의 경우 데이터를 삭제
+                        ws.Rows(rowIndex).Delete
+                        lastRow = lastRow - 1
+                    End If
+                Else
+                    rowIndex = rowIndex + 1
+                End If
+            Loop
+            
+        End If
+NextSheet:
+    Next ws
+
+    'MsgBox "태그가 있는 시트의 Length 합산 및 업데이트가 완료되었습니다.", vbInformation
+End Sub
+
+Public Function CleanString(inputString As String) As String
+    ' 공백 제거 및 대소문자 통일, 숨겨진 문자 제거
+    On Error Resume Next
+    inputString = Trim(inputString) ' 앞뒤 공백 제거
+    inputString = Replace(inputString, Chr(160), " ") ' 비정상적인 공백 문자를 일반 공백으로 변경
+    inputString = Replace(inputString, vbCr, "") ' 캐리지 리턴 제거
+    inputString = Replace(inputString, vbLf, "") ' 줄 바꿈 제거
+    inputString = Replace(inputString, vbTab, "") ' 탭 제거
+    CleanString = LCase(inputString) ' 소문자로 변환
+    On Error GoTo 0
+End Function
+
+
+
