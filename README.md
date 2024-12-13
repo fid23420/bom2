@@ -25,7 +25,7 @@ Sub UpdateQuantity()
     
     ' 헤더 열 위치 찾기
     For j = 1 To lastCol
-        Select Case LCase(wsActive.Cells(headerRow, j).Value)
+        Select Case Trim(LCase(wsActive.Cells(headerRow, j).Value))
             Case "code"
                 codeCol = j
             Case "length"
