@@ -60,3 +60,16 @@ Sub UpdateQuantity()
                     colToUpdate = "K"
                 Case "고소10%+유해10%"
                     colToUpdate = "L"
+                Case "고소20%+유해10%"
+                    colToUpdate = "M"
+                Case Else
+                    colToUpdate = ""
+            End Select
+            
+            If colToUpdate <> "" Then
+                ' 기존 값과 새 값을 합산하여 입력
+                wsTarget.Cells(targetRow, colToUpdate).Value = wsTarget.Cells(targetRow, colToUpdate).Value + length
+            End If
+        End If
+    Next i
+End Sub
