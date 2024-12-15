@@ -1,0 +1,277 @@
+Sub 시트변환()
+    ' 경고 메시지 및 화면 업데이트 비활성화
+    Application.DisplayAlerts = False
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.Calculation = xlCalculationManual
+
+    Dim pasteSheet As Worksheet
+    Dim conditionSheet As Worksheet
+    Dim compareSheet As Worksheet
+    Dim deleteWordHeader As Range
+    Dim deleteColumnHeader As Range
+    Dim deleteWords As Range
+    Dim cell As Range
+    Dim wordToDelete As String
+    Dim key As Variant
+    Dim nameColumn As Range
+    Dim nameColumnIndex As Long
+    Dim elevationColumn As Range
+    Dim elevationColumnIndex As Long
+    Dim itemColumn As Range
+    Dim itemColumnIndex As Long
+    Dim widthColumn As Range
+    Dim widthColumnIndex As Long
+    Dim utilityColumn As Range
+    Dim utilityColumnIndex As Long
+    Dim groupColumn As Range
+    Dim groupColumnIndex As Long
+    Dim materialColumn As Range
+    Dim materialColumnIndex As Long
+    Dim compareSizeColumn As Range
+    Dim compareWidthColumn As Range
+    Dim utilityHeader As Range
+    Dim utilityTransformHeader As Range
+    Dim utilityWords As Range
+    Dim utilityTransformValue As String
+    Dim lastRow As Long
+
+    ' 시트 정의
+    Set pasteSheet = ThisWorkbook.Worksheets("붙여넣기")
+    Set conditionSheet = ThisWorkbook.Worksheets("조건")
+    Set compareSheet = ThisWorkbook.Worksheets("비교")
+
+    ' 예외 처리를 사용해 오류 발생 시 무시하고 넘어가기
+    On Error Resume Next
+    Set deleteWordHeader = conditionSheet.Rows(1).Find(What:="삭제할 단어", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0  ' 오류 처리 재설정
+
+    ' "삭제할 단어" 헤더가 없을 경우 종료
+    If deleteWordHeader Is Nothing Then GoTo Cleanup
+
+    ' 삭제할 단어 설정
+    Set deleteWords = conditionSheet.Range(deleteWordHeader.Offset(1, 0), conditionSheet.Cells(conditionSheet.Rows.Count, deleteWordHeader.Column).End(xlUp))
+    If Application.WorksheetFunction.CountA(deleteWords) = 0 Then GoTo Cleanup
+
+    ' "붙여넣기" 시트에서 삭제할 단어가 포함된 행 삭제
+    lastRow = pasteSheet.Cells(pasteSheet.Rows.Count, 1).End(xlUp).row
+    For i = lastRow To 2 Step -1
+        For Each cell In deleteWords
+            If Len(Trim(cell.Value)) > 0 Then
+                If InStr(1, pasteSheet.Cells(i, 1).Value, Trim(cell.Value), vbTextCompare) > 0 Then
+                    pasteSheet.Rows(i).Delete
+                    Exit For
+                End If
+            End If
+        Next cell
+    Next i
+
+    ' "조건" 시트에서 "삭제할 열" 헤더 찾기
+    On Error Resume Next
+    Set deleteColumnHeader = conditionSheet.Rows(1).Find(What:="삭제할 열", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "삭제할 열" 헤더가 없을 경우 종료
+    If deleteColumnHeader Is Nothing Then GoTo Cleanup
+
+    ' 삭제할 열 설정
+    Set deleteWords = conditionSheet.Range(deleteColumnHeader.Offset(1, 0), conditionSheet.Cells(conditionSheet.Rows.Count, deleteColumnHeader.Column).End(xlUp))
+    If Application.WorksheetFunction.CountA(deleteWords) = 0 Then GoTo Cleanup
+
+    ' 삭제할 열 찾고 삭제
+    For Each cell In deleteWords
+        If Len(Trim(cell.Value)) > 0 Then
+            Set foundCell = pasteSheet.Rows(1).Find(What:=Trim(cell.Value), LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+            If Not foundCell Is Nothing Then
+                pasteSheet.Columns(foundCell.Column).Delete
+            End If
+        End If
+    Next cell
+
+    ' "붙여넣기" 시트에서 "Elevation" 열 찾기
+    On Error Resume Next
+    Set elevationColumn = pasteSheet.Rows(1).Find(What:="Elevation", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "Elevation" 열이 없을 경우 종료
+    If elevationColumn Is Nothing Then GoTo Cleanup
+    elevationColumnIndex = elevationColumn.Column
+
+    ' "Elevation" 열 항목 변환
+    lastRow = pasteSheet.Cells(pasteSheet.Rows.Count, elevationColumnIndex).End(xlUp).row
+    For i = 2 To lastRow
+        If InStr(1, pasteSheet.Cells(i, elevationColumnIndex).Value, "일반", vbTextCompare) > 0 Then
+            pasteSheet.Cells(i, elevationColumnIndex).Value = "---"
+        ElseIf InStr(1, pasteSheet.Cells(i, elevationColumnIndex).Value, "10%", vbTextCompare) > 0 Then
+            pasteSheet.Cells(i, elevationColumnIndex).Value = "고소작업 10% 할증"
+        ElseIf InStr(1, pasteSheet.Cells(i, elevationColumnIndex).Value, "20%", vbTextCompare) > 0 Then
+            pasteSheet.Cells(i, elevationColumnIndex).Value = "고소작업 20% 할증"
+        End If
+    Next i
+
+    ' "붙여넣기" 시트에서 "Item" 열을 동적으로 찾기
+    On Error Resume Next
+    Set itemColumn = pasteSheet.Rows(1).Find(What:="Item", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "Item" 열이 없을 경우 종료
+    If itemColumn Is Nothing Then
+        MsgBox "'Item' 열을 찾을 수 없습니다.", vbInformation
+        Exit Sub
+    End If
+    itemColumnIndex = itemColumn.Column
+
+    ' "붙여넣기" 시트에서 "Width/Diameter" 열을 동적으로 찾기
+    On Error Resume Next
+    Set widthColumn = pasteSheet.Rows(1).Find(What:="Width/Diameter", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "Width/Diameter" 열이 없을 경우 종료
+    If widthColumn Is Nothing Then
+        MsgBox "'Width/Diameter' 열을 찾을 수 없습니다.", vbInformation
+        Exit Sub
+    End If
+    widthColumnIndex = widthColumn.Column
+
+    ' "비교" 시트에서 "Size" 열을 동적으로 찾기
+    On Error Resume Next
+    Set compareSizeColumn = compareSheet.Rows(1).Find(What:="Size", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "비교" 시트의 "Size" 열이 없을 경우 종료
+    If compareSizeColumn Is Nothing Then
+        MsgBox "'비교' 시트의 'Size' 열을 찾을 수 없습니다.", vbInformation
+        Exit Sub
+    End If
+
+    ' "비교" 시트에서 "Width" 열을 동적으로 찾기
+    On Error Resume Next
+    Set compareWidthColumn = compareSheet.Rows(1).Find(What:="Width", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "비교" 시트의 "Width" 열이 없을 경우 종료
+    If compareWidthColumn Is Nothing Then
+        MsgBox "'비교' 시트의 'Width' 열을 찾을 수 없습니다.", vbInformation
+        Exit Sub
+    End If
+
+    ' "붙여넣기" 시트의 "Item" 열에서 'Component'로 칭하는 항목들에 대해 "Width/Diameter" 값을 "비교" 시트의 "Size" 열과 비교하여 매칭되는 경우 "Width" 데이터로 대체
+    Dim compareLastRow As Long
+    Dim compareSizeValue As String
+    Dim compareWidthValue As String
+    compareLastRow = compareSheet.Cells(compareSheet.Rows.Count, compareSizeColumn.Column).End(xlUp).row
+
+    lastRow = pasteSheet.Cells(pasteSheet.Rows.Count, itemColumnIndex).End(xlUp).row
+
+    For i = 2 To lastRow ' 2번째 행부터 시작 (헤더 제외)
+        If InStr(1, pasteSheet.Cells(i, itemColumnIndex).Value, "Component", vbTextCompare) > 0 Then
+            For j = 2 To compareLastRow
+                compareSizeValue = Trim(LCase(compareSheet.Cells(j, compareSizeColumn.Column).Value))
+                If StrComp(Trim(LCase(pasteSheet.Cells(i, widthColumnIndex).Value)), compareSizeValue, vbTextCompare) = 0 Then
+                    compareWidthValue = compareSheet.Cells(j, compareWidthColumn.Column).Value
+                    pasteSheet.Cells(i, widthColumnIndex).Value = compareWidthValue
+                    Exit For
+                End If
+            Next j
+        End If
+    Next i
+
+    ' "조건" 시트에서 첫 행의 "Utility"와 "Utility 변환"이라는 단어열을 동적으로 찾기
+    On Error Resume Next
+    Set utilityHeader = conditionSheet.Rows(1).Find(What:="Utility", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    Set utilityTransformHeader = conditionSheet.Rows(1).Find(What:="Utility 변환", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "Utility" 또는 "Utility 변환"이라는 단어열이 없을 경우 종료
+    If utilityHeader Is Nothing Or utilityTransformHeader Is Nothing Then
+        MsgBox "'Utility' 또는 'Utility 변환'이라는 헤더를 찾을 수 없습니다.", vbInformation
+        Exit Sub
+    End If
+
+    ' "Utility" 헤더 아래의 데이터를 설정
+    Set utilityWords = conditionSheet.Range(utilityHeader.Offset(1, 0), conditionSheet.Cells(conditionSheet.Rows.Count, utilityHeader.Column).End(xlUp))
+    If Application.WorksheetFunction.CountA(utilityWords) = 0 Then
+        MsgBox "Utility 데이터가 없습니다.", vbInformation
+        Exit Sub
+    End If
+
+    ' "붙여넣기" 시트에서 "Utility" 열을 동적으로 찾기
+    On Error Resume Next
+    Set utilityColumn = pasteSheet.Rows(1).Find(What:="Utility", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "Utility" 열이 없을 경우 종료
+    If utilityColumn Is Nothing Then
+        MsgBox "'Utility' 열을 찾을 수 없습니다.", vbInformation
+        Exit Sub
+    End If
+    utilityColumnIndex = utilityColumn.Column
+
+    ' "Utility" 열 항목 변환 (조건 시트의 "Utility" 열에 있는 단어들이 포함된 경우 "Utility 변환" 값으로 대체)
+    lastRow = pasteSheet.Cells(pasteSheet.Rows.Count, utilityColumnIndex).End(xlUp).row
+
+    For i = 2 To lastRow ' 2번째 행부터 시작 (헤더 제외)
+        For Each cell In utilityWords
+            If InStr(1, pasteSheet.Cells(i, utilityColumnIndex).Value, Trim(LCase(cell.Value)), vbTextCompare) > 0 Then
+                utilityTransformValue = conditionSheet.Cells(cell.row, utilityTransformHeader.Column).Value
+                pasteSheet.Cells(i, utilityColumnIndex).Value = utilityTransformValue
+                Exit For
+            End If
+        Next cell
+    Next i
+
+    ' "붙여넣기" 시트에서 "path" 열을 동적으로 찾기
+    On Error Resume Next
+    Set groupColumn = pasteSheet.Rows(1).Find(What:="path", LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    On Error GoTo 0
+
+    ' "path" 열이 없을 경우 종료
+    If groupColumn Is Nothing Then
+        MsgBox "'Group' 열을 찾을 수 없습니다.", vbInformation
+        Exit Sub
+    End If
+    groupColumnIndex = groupColumn.Column
+
+    ' "path" 열 항목에서 '[' 문자열 이전의 부분을 제외하고 나타내기
+    lastRow = pasteSheet.Cells(pasteSheet.Rows.Count, groupColumnIndex).End(xlUp).row
+    For i = 2 To lastRow ' 2번째 행부터 시작 (헤더 제외)
+        Dim groupValue As String
+        groupValue = pasteSheet.Cells(i, groupColumnIndex).Value
+        If InStr(groupValue, "[") > 0 Then
+            pasteSheet.Cells(i, groupColumnIndex).Value = Mid(groupValue, InStr(groupValue, "[") + 1)
+        End If
+    Next i
+
+Cleanup:
+    ' 경고 메시지 및 화면 업데이트 복원
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    Application.Calculation = xlCalculationAutomatic
+
+    ' 사용한 객체 해제
+    Set pasteSheet = Nothing
+    Set conditionSheet = Nothing
+    Set compareSheet = Nothing
+    Set deleteWordHeader = Nothing
+    Set deleteColumnHeader = Nothing
+    Set deleteWords = Nothing
+    Set cell = Nothing
+    Set nameColumn = Nothing
+    Set elevationColumn = Nothing
+    Set itemColumn = Nothing
+    Set widthColumn = Nothing
+    Set utilityColumn = Nothing
+    Set groupColumn = Nothing
+    Set materialColumn = Nothing
+    Set compareSizeColumn = Nothing
+    Set compareWidthColumn = Nothing
+    Set utilityHeader = Nothing
+    Set utilityTransformHeader = Nothing
+    Set utilityWords = Nothing
+
+    ' 완료 메시지 표시
+    MsgBox "삭제, Elevation 변환, Width/Diameter 데이터 및 Utility 데이터 업데이트가 완료되었습니다.", vbInformation
+End Sub
+
+
