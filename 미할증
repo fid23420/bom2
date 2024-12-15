@@ -1,0 +1,32 @@
+Sub UpdateElevationData()
+    Dim wb As Workbook
+    Dim pasteWs As Worksheet
+    Dim compareWs As Worksheet
+    Dim lastRowPaste As Long
+    Dim lastRowCompare As Long
+    Dim pasteName As Range
+    Dim compareName As Range
+    Dim compareElevation As Range
+    Dim i As Long, j As Long
+
+    Set wb = ThisWorkbook
+    Set pasteWs = wb.Worksheets("붙여넣기")
+    Set compareWs = wb.Worksheets("비교")
+    
+    lastRowPaste = pasteWs.Cells(pasteWs.Rows.Count, "A").End(xlUp).Row
+    lastRowCompare = compareWs.Cells(compareWs.Rows.Count, "A").End(xlUp).Row
+
+    Set pasteName = pasteWs.Range("A1:A" & lastRowPaste)
+    Set compareName = compareWs.Range("A1:A" & lastRowCompare)
+    Set compareElevation = compareWs.Range("B1:B" & lastRowCompare) ' elevation 열이 B열에 있다고 가정
+
+    For i = 2 To lastRowPaste ' Assuming header row
+        For j = 2 To lastRowCompare
+            If pasteName.Cells(i, 1).Value = compareName.Cells(j, 1).Value Then
+                If compareElevation.Cells(j, 1).Value <> "할증" Then
+                    pasteWs.Cells(i, 2).Value = "---" ' 붙여넣기 시트의 elevation 열이 B열에 있다고 가정
+                End If
+            End If
+        Next j
+    Next i
+End Sub
