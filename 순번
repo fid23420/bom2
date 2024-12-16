@@ -1,0 +1,120 @@
+Public Sub UpdateSheetWithSequence()
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim compareWs As Worksheet
+    Dim dataDict As Object
+    Dim rowIndex As Long
+    Dim sequenceValue As String
+
+    ' Dictionary 생성
+    Set dataDict = CreateObject("Scripting.Dictionary")
+
+    ' 비교 시트 데이터 읽기
+    Set compareWs = ThisWorkbook.Worksheets("비교")
+    lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
+    For rowIndex = 2 To lastRow
+        Dim compareKey As String
+        compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
+                     CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
+                     CleanString(compareWs.Cells(rowIndex, 3).Value) ' Name, Width, Utility 기준
+        If Not dataDict.exists(compareKey) Then
+            dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value ' 순번 값 저장
+        End If
+    Next rowIndex
+
+    ' 모든 시트를 순회하며 데이터 업데이트
+    For Each ws In ThisWorkbook.Worksheets
+        ' 제외할 시트 목록에 포함되지 않은 시트만 처리
+        If Not ws.Name = "비교" And ws.CustomProperties("GeneratedByMacro").Value = "True" Then
+            On Error Resume Next
+            
+            ' 헤더 위치 동적으로 찾기
+            Dim nameCol As Long, widthCol As Long, utilityCol As Long, seqCol As Long
+            nameCol = FindColumn(ws, "name")
+            widthCol = FindColumn(ws, "width/diameter")
+            utilityCol = FindColumn(ws, "utility")
+            seqCol = FindColumn(ws, "순번")
+            
+            ' 순번 열이 없다면 새로 추가
+            If seqCol = 0 Then
+                seqCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column + 1
+                ws.Cells(1, seqCol).Value = "순번"
+            End If
+            
+            ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
+            If nameCol = 0 Or widthCol = 0 Or utilityCol = 0 Then
+                MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.Name, vbExclamation
+                GoTo NextSheet
+            End If
+            
+            ' 시트의 마지막 행 찾기
+            lastRow = ws.Cells(ws.Rows.Count, nameCol).End(xlUp).Row
+            
+            ' 순번 데이터를 업데이트
+            For rowIndex = 2 To lastRow
+                If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then ' "Name" 열이 비어 있지 않은 경우
+                    Dim key As String
+                    key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
+                          GetMatchingUtilityKey(ws.Cells(rowIndex, utilityCol).Value, compareWs, dataDict)
+                    
+                    ' 매칭되는 키가 있는 경우 순번 값을 업데이트
+                    If dataDict.exists(key) Then
+                        ws.Cells(rowIndex, seqCol).Value = dataDict(key)
+                    Else
+                        ws.Cells(rowIndex, seqCol).Value = "N/A" ' 매칭되는 순번 값이 없는 경우
+                    End If
+                End If
+            Next rowIndex
+            
+        End If
+NextSheet:
+    Next ws
+End Sub
+
+Public Function FindColumn(ws As Worksheet, header As String) As Long
+    Dim cell As Range
+    For Each cell In ws.Rows(1).Cells
+        If LCase(Trim(cell.Value)) = LCase(Trim(header)) Then
+            FindColumn = cell.Column
+            Exit Function
+        End If
+    Next cell
+    FindColumn = 0 ' 헤더를 찾지 못한 경우
+End Function
+
+Public Function CleanString(inputString As String) As String
+    ' 공백 제거 및 대소문자 통일, 숨겨진 문자 제거
+    On Error Resume Next
+    inputString = Trim(inputString) ' 앞뒤 공백 제거
+    inputString = Replace(inputString, Chr(160), " ") ' 비정상적인 공백 문자를 일반 공백으로 변경
+    inputString = Replace(inputString, vbCr, "") ' 캐리지 리턴 제거
+    inputString = Replace(inputString, vbLf, "") ' 줄 바꿈 제거
+    inputString = Replace(inputString, vbTab, "") ' 탭 제거
+    CleanString = LCase(inputString) ' 소문자로 변환
+    On Error GoTo 0
+End Function
+
+Public Function GetMatchingUtilityKey(utilityValue As String, compareWs As Worksheet, dataDict As Object) As String
+    Dim rowIndex As Long
+    Dim lastRow As Long
+    Dim compareUtility As String
+    Dim matchFound As Boolean
+    
+    lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
+    For rowIndex = 2 To lastRow
+        compareUtility = CleanString(compareWs.Cells(rowIndex, 3).Value)
+        If InStr(1, utilityValue, compareUtility, vbTextCompare) > 0 Then
+            GetMatchingUtilityKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
+                                    CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
+                                    compareUtility
+            matchFound = True
+            Exit For
+        End If
+    Next rowIndex
+    
+    If Not matchFound Then
+        GetMatchingUtilityKey = "N/A"
+    End If
+End Function
