@@ -1,4 +1,5 @@
-Public Sub 생성시트계산()
+Public Sub UpdateSheetData()
+    Dim wb As Workbook
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim key As String
@@ -11,100 +12,64 @@ Public Sub 생성시트계산()
     Set dataDict = CreateObject("Scripting.Dictionary")
     Set keysAdded = CreateObject("Scripting.Dictionary")
 
-    ' 조건 시트에서 "시트 제외" 헤더 열 찾기
-    Dim conditionWs As Worksheet
-    Dim excludeSheets As Collection
-    Set excludeSheets = New Collection
-    On Error Resume Next
-    Set conditionWs = ThisWorkbook.Worksheets("조건")
-    If Not conditionWs Is Nothing Then
-        Dim excludeCol As Long
-        excludeCol = 0
-        ' "시트 제외" 헤더 열 찾기
-        Dim headerCell As Range
-        For Each headerCell In conditionWs.Rows(1).Cells
-            If LCase(Trim(headerCell.Value)) = "시트 제외" Then
-                excludeCol = headerCell.Column
-                Exit For
-            End If
-        Next headerCell
-        
-        ' "시트 제외" 열 데이터 수집
-        If excludeCol > 0 Then
-            Dim excludeRow As Long
-            For excludeRow = 2 To conditionWs.Cells(conditionWs.Rows.Count, excludeCol).End(xlUp).row
-                If Len(Trim(conditionWs.Cells(excludeRow, excludeCol).Value)) > 0 Then
-                    excludeSheets.Add Trim(conditionWs.Cells(excludeRow, excludeCol).Value)
-                End If
-            Next excludeRow
-        End If
-    End If
-    On Error GoTo 0
-    
     ' 비교 시트 데이터 읽기
     Dim compareWs As Worksheet
     Set compareWs = ThisWorkbook.Worksheets("비교")
     Dim compareDict As Object
     Set compareDict = CreateObject("Scripting.Dictionary")
-    If Not compareWs Is Nothing Then
-        lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).row
-        For rowIndex = 2 To lastRow
-            Dim compareKey As String
-            compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) ' 비교 시트의 "name" 열 기준
-            If Not compareDict.exists(compareKey) Then
-                compareDict.Add compareKey, rowIndex ' 행 번호를 저장
-            End If
-        Next rowIndex
-    End If
-    
-    ' 모든 시트를 순회하며 "GeneratedByMacro" 태그가 있는 시트만 선택
+    lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
+    For rowIndex = 2 To lastRow
+        Dim compareKey As String
+        compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) ' 비교 시트의 "name" 열 기준
+        If Not compareDict.exists(compareKey) Then
+            compareDict.Add compareKey, rowIndex ' 행 번호를 저장
+        End If
+    Next rowIndex
+
+    ' 모든 시트를 순회하며 데이터 업데이트
     For Each ws In ThisWorkbook.Worksheets
-        ' "시트 제외" 목록에 있는 시트를 건너뛰기 위한 조건
-        Dim isExcluded As Boolean
-        isExcluded = False
-        For Each sheetName In excludeSheets
-            If ws.name = sheetName Then
-                isExcluded = True
-                Exit For
-            End If
-        Next sheetName
-        If isExcluded Then GoTo NextSheet
-        
         On Error Resume Next
         If ws.CustomProperties("GeneratedByMacro").Value = "True" Then
             On Error GoTo 0
             
             ' 헤더 위치 동적으로 찾기
             Dim itemCol As Long, lengthCol As Long, nameCol As Long, utilityCol As Long, widthCol As Long, elevationCol As Long
-            itemCol = 0: lengthCol = 0: nameCol = 0: utilityCol = 0: widthCol = 0: elevationCol = 0
-            
-            ' 첫 행에서 각 헤더를 찾음
-            For Each headerCell In ws.Rows(1).Cells
-                Select Case LCase(Trim(headerCell.Value))
-                    Case "item": itemCol = headerCell.Column
-                    Case "length": lengthCol = headerCell.Column
-                    Case "name": nameCol = headerCell.Column
-                    Case "utility": utilityCol = headerCell.Column
-                    Case "width/diameter": widthCol = headerCell.Column
-                    Case "elevation": elevationCol = headerCell.Column
-                End Select
-            Next headerCell
+            itemCol = FindColumn(ws, "item")
+            lengthCol = FindColumn(ws, "length")
+            nameCol = FindColumn(ws, "name")
+            utilityCol = FindColumn(ws, "utility")
+            widthCol = FindColumn(ws, "width/diameter")
+            elevationCol = FindColumn(ws, "elevation")
             
             ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
             If itemCol = 0 Or lengthCol = 0 Or nameCol = 0 Or utilityCol = 0 Or widthCol = 0 Or elevationCol = 0 Then
-                MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.name, vbExclamation
+                MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.Name, vbExclamation
                 GoTo NextSheet
             End If
             
             ' 시트의 마지막 행 찾기
-            lastRow = ws.Cells(ws.Rows.Count, nameCol).End(xlUp).row
+            lastRow = ws.Cells(ws.Rows.Count, nameCol).End(xlUp).Row
             
             ' 키 생성 및 Length 합산
             dataDict.RemoveAll
             For rowIndex = 2 To lastRow
                 If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then ' "Name" 열이 비어 있지 않은 경우
                     key = CleanString(ws.Cells(rowIndex, nameCol).Value) ' 기본적으로 이름을 키로 사용
-           
+                    
+                    ' 비교 시트에서 매칭되는지 확인
+                    If compareDict.exists(key) Then
+                        Dim compareRow As Long
+                        compareRow = compareDict(key)
+                        ' "비교" 시트의 I 열 값 확인
+                        If InStr(1, LCase(compareWs.Cells(compareRow, 9).Value), "할증") = 0 Then
+                            ' 키 생성: 각 값을 공백 제거하고 연결하여 고유 키 생성
+                            key = key & "|" & _
+                                  CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
+                                  CleanString(ws.Cells(rowIndex, utilityCol).Value)
+                            
+                            ' Length 값을 가져옴 (elevation 제외)
+                            If IsNumeric(ws.Cells(rowIndex, lengthCol).Value) Then
+                                lengthValue = CDbl(ws.Cells(rowIndex, lengthCol).Value)
                                 
                                 ' "Item"이 "Pipe"인 경우 Length 값을 1000으로 나누고 소수점 3번째 자리 이후 버리고 소수점 첫째 자리까지 반올림
                                 If Trim(LCase(ws.Cells(rowIndex, itemCol).Value)) = "pipe" Then
@@ -154,9 +119,18 @@ Public Sub 생성시트계산()
         End If
 NextSheet:
     Next ws
-
-    'MsgBox "태그가 있는 시트의 Length 합산 및 업데이트가 완료되었습니다.", vbInformation
 End Sub
+
+Public Function FindColumn(ws As Worksheet, header As String) As Long
+    Dim cell As Range
+    For Each cell In ws.Rows(1).Cells
+        If LCase(Trim(cell.Value)) = LCase(Trim(header)) Then
+            FindColumn = cell.Column
+            Exit Function
+        End If
+    Next cell
+    FindColumn = 0 ' 헤더를 찾지 못한 경우
+End Function
 
 Public Function CleanString(inputString As String) As String
     ' 공백 제거 및 대소문자 통일, 숨겨진 문자 제거
@@ -169,4 +143,3 @@ Public Function CleanString(inputString As String) As String
     CleanString = LCase(inputString) ' 소문자로 변환
     On Error GoTo 0
 End Function
-
