@@ -46,9 +46,15 @@ Public Sub UpdateSheetWithSequence()
     End If
     For rowIndex = 2 To lastRow
         Dim compareKey As String
-        compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
-                     CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
-                     CleanString(compareWs.Cells(rowIndex, 3).Value)
+        If Len(Trim(compareWs.Cells(rowIndex, 3).Value)) > 0 Then ' utility 값이 비어 있지 않은 경우
+            compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
+                         CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
+                         CleanString(compareWs.Cells(rowIndex, 3).Value)
+        Else ' utility 값이 비어 있는 경우
+            compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
+                         CleanString(compareWs.Cells(rowIndex, 2).Value)
+        End If
+
         If Not dataDict.exists(compareKey) Then
             dataDict.Add compareKey, compareWs.Cells(rowIndex, sequenceCol).Value
             Print #debugFile, "Added to dataDict: " & compareKey & " with sequence: " & compareWs.Cells(rowIndex, sequenceCol).Value
@@ -76,67 +82,4 @@ Public Sub UpdateSheetWithSequence()
         
         ' 순번 열이 없다면 새로 추가
         If seqCol = 0 Then
-            seqCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column + 1
-            ws.Cells(1, seqCol).Value = "순번"
-            Print #debugFile, "Added sequence column to: " & ws.Name
-        End If
-        
-        ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
-        If nameCol = 0 Or widthCol = 0 Or utilityCol = 0 Then
-            MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.Name, vbExclamation
-            GoTo NextSheet
-        End If
-        
-        ' 시트의 마지막 행 찾기
-        lastRow = ws.Cells(ws.Rows.Count, nameCol).End(xlUp).Row
-        
-        ' 순번 데이터를 업데이트
-        For rowIndex = 2 To lastRow
-            If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then
-                Dim key As String
-                key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
-                      CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
-                      CleanString(Replace(ws.Cells(rowIndex, utilityCol).Value, " ", "")) ' 공백 제거
-                Print #debugFile, "Generated key for row " & rowIndex & ": " & key
-                
-                ' 매칭되는 키가 있는 경우 순번 값을 업데이트
-                If dataDict.exists(key) Then
-                    ws.Cells(rowIndex, seqCol).Value = dataDict(key)
-                    Print #debugFile, "Updated sequence at row " & rowIndex & " in sheet " & ws.Name & " with sequence: " & dataDict(key)
-                Else
-                    ws.Cells(rowIndex, seqCol).Value = "N/A"
-                    Print #debugFile, "No match found for key: " & key & " at row " & rowIndex & " in sheet " & ws.Name
-                End If
-            End If
-        Next rowIndex
-        
-NextSheet:
-    Next ws
-    
-    ' 디버깅 파일 닫기
-    Close #debugFile
-    MsgBox "디버깅 완료. 결과는 DebugOutput.txt 파일을 확인하세요."
-End Sub
-
-Public Function FindColumn(ws As Worksheet, header As String) As Long
-    Dim cell As Range
-    For Each cell In ws.Rows(1).Cells
-        If LCase(Trim(cell.Value)) = LCase(Trim(header)) Then
-            FindColumn = cell.Column
-            Exit Function
-        End If
-    Next cell
-    FindColumn = 0 ' 헤더를 찾지 못한 경우
-End Function
-
-Public Function CleanString(inputString As String) As String
-    ' 공백 제거 및 대소문자 통일, 숨겨진 문자 제거
-    On Error Resume Next
-    inputString = Trim(inputString)
-    inputString = Replace(inputString, Chr(160), " ")
-    inputString = Replace(inputString, vbCr, "")
-    inputString = Replace(inputString, vbLf, "")
-    inputString = Replace(inputString, vbTab, "")
-    CleanString = LCase(inputString)
-    On Error GoTo 0
-End Function
+            seqCol = ws.Cells(1,
