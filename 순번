@@ -18,7 +18,7 @@ Public Sub UpdateSheetWithSequence()
     lastRow = conditionWs.Cells(conditionWs.Rows.Count, 1).End(xlUp).Row
     For rowIndex = 2 To lastRow
         Dim excludeSheet As String
-        excludeSheet = CleanString(conditionWs.Cells(rowIndex, FindColumn(conditionWs, "시트 제외")).Value) ' 조건 시트의 "시트 제외" 열 기준
+        excludeSheet = CleanString(conditionWs.Cells(rowIndex, 1).Value) ' 조건 시트의 "시트 제외" 열 기준
         If Len(excludeSheet) > 0 And Not excludeDict.exists(excludeSheet) Then
             excludeDict.Add excludeSheet, True
         End If
@@ -29,11 +29,11 @@ Public Sub UpdateSheetWithSequence()
     lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
     For rowIndex = 2 To lastRow
         Dim compareKey As String
-        compareKey = CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "name")).Value) & "|" & _
-                     CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "width")).Value) & "|" & _
-                     CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "utility")).Value) ' Name, Width, Utility 기준
+        compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
+                     CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
+                     CleanString(compareWs.Cells(rowIndex, 3).Value) ' Name, Width, Utility 기준
         If Not dataDict.exists(compareKey) Then
-            dataDict.Add compareKey, compareWs.Cells(rowIndex, FindColumn(compareWs, "순번")).Value ' 순번 값 저장
+            dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value ' 순번 값 저장
         End If
     Next rowIndex
 
@@ -57,7 +57,7 @@ Public Sub UpdateSheetWithSequence()
             End If
             
             ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
-            If nameCol = 0 Or widthCol = 0 Or utilityCol = 0 Then
+            If nameCol = 0 Or widthCol = 0 Then ' utility 열을 제외
                 MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.Name, vbExclamation
                 GoTo NextSheet
             End If
@@ -70,8 +70,7 @@ Public Sub UpdateSheetWithSequence()
                 If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then ' "Name" 열이 비어 있지 않은 경우
                     Dim key As String
                     key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
-                          CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
-                          GetMatchingUtilityKey(ws.Cells(rowIndex, utilityCol).Value, compareWs, dataDict)
+                          CleanString(ws.Cells(rowIndex, widthCol).Value)
                     
                     ' 매칭되는 키가 있는 경우 순번 값을 업데이트
                     If dataDict.exists(key) Then
@@ -108,27 +107,4 @@ Public Function CleanString(inputString As String) As String
     inputString = Replace(inputString, vbTab, "") ' 탭 제거
     CleanString = LCase(inputString) ' 소문자로 변환
     On Error GoTo 0
-End Function
-
-Public Function GetMatchingUtilityKey(utilityValue As String, compareWs As Worksheet, dataDict As Object) As String
-    Dim rowIndex As Long
-    Dim lastRow As Long
-    Dim compareUtility As String
-    Dim matchFound As Boolean
-    
-    lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
-    For rowIndex = 2 To lastRow
-        compareUtility = CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "utility")).Value)
-        If InStr(1, utilityValue, compareUtility, vbTextCompare) > 0 Then
-            GetMatchingUtilityKey = CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "name")).Value) & "|" & _
-                                    CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "width")).Value) & "|" & _
-                                    compareUtility
-            matchFound = True
-            Exit For
-        End If
-    Next rowIndex
-    
-    If Not matchFound Then
-        GetMatchingUtilityKey = "N/A"
-    End If
 End Function
