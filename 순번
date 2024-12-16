@@ -77,7 +77,7 @@ Public Sub UpdateSheetWithSequence()
         
         ' 순번 데이터를 업데이트
         For rowIndex = 2 To lastRow
-            If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then ' "Name" 열이 비어 있지 않은 경우
+            If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then
                 Dim key As String
                 key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
                       CleanString(ws.Cells(rowIndex, widthCol).Value)
@@ -86,7 +86,7 @@ Public Sub UpdateSheetWithSequence()
                 If dataDict.exists(key) Then
                     ws.Cells(rowIndex, seqCol).Value = dataDict(key)
                 Else
-                    ws.Cells(rowIndex, seqCol).Value = "N/A" ' 매칭되는 순번 값이 없는 경우
+                    ws.Cells(rowIndex, seqCol).Value = "N/A"
                 End If
             End If
         Next rowIndex
