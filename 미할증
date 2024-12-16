@@ -19,13 +19,13 @@ Sub UpdateElevationData()
     lastRowCompare = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
     
     ' 'name' 열과 'elevation' 열 찾기
-    pasteNameCol = FindColumnIgnoreCase(pasteWs, "name")
-    compareNameCol = FindColumnIgnoreCase(compareWs, "name")
-    compareElevationCol = FindColumnIgnoreCase(compareWs, "elevation")
-    pasteElevationCol = FindColumnIgnoreCase(pasteWs, "elevation")
+    pasteNameCol = FindColumnIgnoreCase(pasteWs, "Name")
+    compareNameCol = FindColumnIgnoreCase(compareWs, "Name")
+    compareElevationCol = FindColumnIgnoreCase(compareWs, "Elevation")
+    pasteElevationCol = FindColumnIgnoreCase(pasteWs, "Elevation")
     
     If pasteNameCol = 0 Or compareNameCol = 0 Or compareElevationCol = 0 Or pasteElevationCol = 0 Then
-        MsgBox "열을 찾을 수 없습니다. 'name' 및 'elevation' 열이 존재하는지 확인하세요.", vbCritical
+        MsgBox "열을 찾을 수 없습니다. 'Name' 및 'Elevation' 열이 존재하는지 확인하세요.", vbCritical
         Exit Sub
     End If
 
