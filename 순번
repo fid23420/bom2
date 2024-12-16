@@ -26,7 +26,7 @@ Public Sub UpdateSheetWithSequence()
     ' 모든 시트를 순회하며 데이터 업데이트
     For Each ws In ThisWorkbook.Worksheets
         ' 제외할 시트 목록에 포함되지 않은 시트만 처리
-        If Not ws.Name = "비교" And ws.CustomProperties("GeneratedByMacro").Value = "True" Then
+        If ws.Name <> "비교" And ws.CustomProperties("GeneratedByMacro").Value = "True" Then
             On Error Resume Next
             
             ' 헤더 위치 동적으로 찾기
