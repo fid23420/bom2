@@ -8,6 +8,7 @@ Public Sub UpdateSheetWithSequence()
     Dim excludeDict As Object
     Dim rowIndex As Long
     Dim sequenceCol As Long
+    Dim nameCol As Long, widthCol As Long, utilityCol As Long
     Dim sequenceValue As String
     Dim debugFilePath As String
     Dim debugFile As Integer
@@ -39,20 +40,25 @@ Public Sub UpdateSheetWithSequence()
     ' 비교 시트 데이터 읽기
     Set compareWs = ThisWorkbook.Worksheets("비교")
     lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
+    nameCol = FindColumn(compareWs, "name")
+    widthCol = FindColumn(compareWs, "width")
+    utilityCol = FindColumn(compareWs, "utility")
     sequenceCol = FindColumn(compareWs, "순번")
-    If sequenceCol = 0 Then
-        MsgBox "비교 시트에서 순번 열을 찾을 수 없습니다.", vbExclamation
+
+    If nameCol = 0 Or widthCol = 0 Or utilityCol = 0 Or sequenceCol = 0 Then
+        MsgBox "비교 시트에서 필요한 헤더를 찾을 수 없습니다.", vbExclamation
         Exit Sub
     End If
+
     For rowIndex = 2 To lastRow
         Dim compareKey As String
-        If Len(Trim(compareWs.Cells(rowIndex, 3).Value)) > 0 Then ' utility 값이 비어 있지 않은 경우
-            compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
-                         CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
-                         CleanString(compareWs.Cells(rowIndex, 3).Value)
+        If Len(Trim(compareWs.Cells(rowIndex, utilityCol).Value)) > 0 Then ' utility 값이 비어 있지 않은 경우
+            compareKey = CleanString(compareWs.Cells(rowIndex, nameCol).Value) & "|" & _
+                         CleanString(compareWs.Cells(rowIndex, widthCol).Value) & "|" & _
+                         CleanString(compareWs.Cells(rowIndex, utilityCol).Value)
         Else ' utility 값이 비어 있는 경우
-            compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
-                         CleanString(compareWs.Cells(rowIndex, 2).Value)
+            compareKey = CleanString(compareWs.Cells(rowIndex, nameCol).Value) & "|" & _
+                         CleanString(compareWs.Cells(rowIndex, widthCol).Value)
         End If
 
         If Not dataDict.exists(compareKey) Then
@@ -74,10 +80,10 @@ Public Sub UpdateSheetWithSequence()
         On Error Resume Next
         
         ' 헤더 위치 동적으로 찾기
-        Dim nameCol As Long, widthCol As Long, utilityCol As Long, seqCol As Long
-        nameCol = FindColumn(ws, "name")
-        widthCol = FindColumn(ws, "width/diameter")
-        utilityCol = FindColumn(ws, "utility")
+        Dim applyNameCol As Long, applyWidthCol As Long, applyUtilityCol As Long, seqCol As Long
+        applyNameCol = FindColumn(ws, "name")
+        applyWidthCol = FindColumn(ws, "width/diameter")
+        applyUtilityCol = FindColumn(ws, "utility")
         seqCol = FindColumn(ws, "순번")
         
         ' 순번 열이 없다면 새로 추가
@@ -88,25 +94,25 @@ Public Sub UpdateSheetWithSequence()
         End If
         
         ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
-        If nameCol = 0 Or widthCol = 0 Or utilityCol = 0 Then
+        If applyNameCol = 0 Or applyWidthCol = 0 Or applyUtilityCol = 0 Then
             MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.Name, vbExclamation
             GoTo NextSheet
         End If
         
         ' 시트의 마지막 행 찾기
-        lastRow = ws.Cells(ws.Rows.Count, nameCol).End(xlUp).Row
+        lastRow = ws.Cells(ws.Rows.Count, applyNameCol).End(xlUp).Row
         
         ' 순번 데이터를 업데이트
         For rowIndex = 2 To lastRow
-            If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then
+            If Len(Trim(ws.Cells(rowIndex, applyNameCol).Value)) > 0 Then
                 Dim key As String
-                If Len(Trim(ws.Cells(rowIndex, utilityCol).Value)) > 0 Then ' utility 값이 비어 있지 않은 경우
-                    key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
-                          CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
-                          CleanString(Replace(ws.Cells(rowIndex, utilityCol).Value, " ", "")) ' 공백 제거
+                If Len(Trim(ws.Cells(rowIndex, applyUtilityCol).Value)) > 0 Then ' utility 값이 비어 있지 않은 경우
+                    key = CleanString(ws.Cells(rowIndex, applyNameCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, applyWidthCol).Value) & "|" & _
+                          CleanString(Replace(ws.Cells(rowIndex, applyUtilityCol).Value, " ", "")) ' 공백 제거
                 Else ' utility 값이 비어 있는 경우
-                    key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
-                          CleanString(ws.Cells(rowIndex, widthCol).Value)
+                    key = CleanString(ws.Cells(rowIndex, applyNameCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, applyWidthCol).Value)
                 End If
                 
                 Print #debugFile, "Generated key for row " & rowIndex & ": " & key
