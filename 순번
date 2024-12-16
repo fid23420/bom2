@@ -67,7 +67,7 @@ Public Sub UpdateSheetWithSequence()
         End If
         
         ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
-        If nameCol = 0 Or widthCol = 0 Then ' utility 열을 제외
+        If nameCol = 0 Or widthCol = 0 Or utilityCol = 0 Then
             MsgBox "필요한 헤더를 찾을 수 없습니다. 시트: " & ws.Name, vbExclamation
             GoTo NextSheet
         End If
@@ -80,13 +80,16 @@ Public Sub UpdateSheetWithSequence()
             If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then
                 Dim key As String
                 key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
-                      CleanString(ws.Cells(rowIndex, widthCol).Value)
+                      CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
+                      CleanString(ws.Cells(rowIndex, utilityCol).Value)
                 
                 ' 매칭되는 키가 있는 경우 순번 값을 업데이트
                 If dataDict.exists(key) Then
                     ws.Cells(rowIndex, seqCol).Value = dataDict(key)
+                    Debug.Print "Updated sequence at row " & rowIndex & " in sheet " & ws.Name ' 디버그 메시지 추가
                 Else
                     ws.Cells(rowIndex, seqCol).Value = "N/A"
+                    Debug.Print "No match found for key: " & key ' 디버그 메시지 추가
                 End If
             End If
         Next rowIndex
