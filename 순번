@@ -18,11 +18,11 @@ Public Sub UpdateSheetWithSequence()
     lastRow = conditionWs.Cells(conditionWs.Rows.Count, 1).End(xlUp).Row
     For rowIndex = 2 To lastRow
         Dim excludeSheet As String
-        excludeSheet = CleanString(conditionWs.Cells(rowIndex, 1).Value) ' 조건 시트의 "시트 제외" 열 기준
-        Debug.Print "Exclude Sheet: " & excludeSheet ' 디버그 메시지 추가
+        excludeSheet = CleanString(conditionWs.Cells(rowIndex, 1).Value)
+        Debug.Print "Exclude Sheet: " & excludeSheet
         If Len(excludeSheet) > 0 And Not excludeDict.exists(excludeSheet) Then
             excludeDict.Add excludeSheet, True
-            Debug.Print "Sheet added to exclusion: " & excludeSheet ' 디버그 메시지 추가
+            Debug.Print "Sheet added to exclusion: " & excludeSheet
         End If
     Next rowIndex
 
@@ -33,23 +33,23 @@ Public Sub UpdateSheetWithSequence()
         Dim compareKey As String
         compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
                      CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
-                     CleanString(compareWs.Cells(rowIndex, 3).Value) ' Name, Width, Utility 기준
+                     CleanString(compareWs.Cells(rowIndex, 3).Value)
         If Not dataDict.exists(compareKey) Then
-            dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value ' 순번 값 저장
-            Debug.Print "Added to dataDict: " & compareKey ' 디버그 메시지 추가
+            dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value
+            Debug.Print "Added to dataDict: " & compareKey
         End If
     Next rowIndex
 
     ' 모든 시트를 순회하며 데이터 업데이트
     For Each ws In ThisWorkbook.Worksheets
-        Debug.Print "Processing Sheet: " & ws.Name ' 디버그 메시지 추가
+        Debug.Print "Processing Sheet: " & ws.Name
         ' 제외할 시트 목록에 포함되지 않은 시트만 처리
         If excludeDict.exists(ws.Name) Then
-            Debug.Print "Sheet is excluded: " & ws.Name ' 디버그 메시지 추가
+            Debug.Print "Sheet is excluded: " & ws.Name
             GoTo NextSheet
         End If
         
-        Debug.Print "Sheet is not excluded: " & ws.Name ' 디버그 메시지 추가
+        Debug.Print "Sheet is not excluded: " & ws.Name
         On Error Resume Next
         
         ' 헤더 위치 동적으로 찾기
@@ -63,7 +63,7 @@ Public Sub UpdateSheetWithSequence()
         If seqCol = 0 Then
             seqCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column + 1
             ws.Cells(1, seqCol).Value = "순번"
-            Debug.Print "Added sequence column to: " & ws.Name ' 디버그 메시지 추가
+            Debug.Print "Added sequence column to: " & ws.Name
         End If
         
         ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
@@ -81,15 +81,15 @@ Public Sub UpdateSheetWithSequence()
                 Dim key As String
                 key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
                       CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
-                      CleanString(ws.Cells(rowIndex, utilityCol).Value)
+                      CleanString(Replace(ws.Cells(rowIndex, utilityCol).Value, " ", "")) ' 공백 제거
                 
                 ' 매칭되는 키가 있는 경우 순번 값을 업데이트
                 If dataDict.exists(key) Then
                     ws.Cells(rowIndex, seqCol).Value = dataDict(key)
-                    Debug.Print "Updated sequence at row " & rowIndex & " in sheet " & ws.Name ' 디버그 메시지 추가
+                    Debug.Print "Updated sequence at row " & rowIndex & " in sheet " & ws.Name
                 Else
                     ws.Cells(rowIndex, seqCol).Value = "N/A"
-                    Debug.Print "No match found for key: " & key ' 디버그 메시지 추가
+                    Debug.Print "No match found for key: " & key
                 End If
             End If
         Next rowIndex
@@ -112,11 +112,11 @@ End Function
 Public Function CleanString(inputString As String) As String
     ' 공백 제거 및 대소문자 통일, 숨겨진 문자 제거
     On Error Resume Next
-    inputString = Trim(inputString) ' 앞뒤 공백 제거
-    inputString = Replace(inputString, Chr(160), " ") ' 비정상적인 공백 문자를 일반 공백으로 변경
-    inputString = Replace(inputString, vbCr, "") ' 캐리지 리턴 제거
-    inputString = Replace(inputString, vbLf, "") ' 줄 바꿈 제거
-    inputString = Replace(inputString, vbTab, "") ' 탭 제거
-    CleanString = LCase(inputString) ' 소문자로 변환
+    inputString = Trim(inputString)
+    inputString = Replace(inputString, Chr(160), " ")
+    inputString = Replace(inputString, vbCr, "")
+    inputString = Replace(inputString, vbLf, "")
+    inputString = Replace(inputString, vbTab, "")
+    CleanString = LCase(inputString)
     On Error GoTo 0
 End Function
