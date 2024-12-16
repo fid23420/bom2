@@ -4,29 +4,50 @@ Sub UpdateElevationData()
     Dim compareWs As Worksheet
     Dim lastRowPaste As Long
     Dim lastRowCompare As Long
-    Dim pasteName As Range
-    Dim compareName As Range
-    Dim compareElevation As Range
+    Dim pasteNameCol As Long
+    Dim compareNameCol As Long
+    Dim compareElevationCol As Long
+    Dim pasteElevationCol As Long
     Dim i As Long, j As Long
 
     Set wb = ThisWorkbook
     Set pasteWs = wb.Worksheets("붙여넣기")
     Set compareWs = wb.Worksheets("비교")
     
-    lastRowPaste = pasteWs.Cells(pasteWs.Rows.Count, "A").End(xlUp).Row
-    lastRowCompare = compareWs.Cells(compareWs.Rows.Count, "A").End(xlUp).Row
+    ' 마지막 행 찾기
+    lastRowPaste = pasteWs.Cells(pasteWs.Rows.Count, 1).End(xlUp).Row
+    lastRowCompare = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
+    
+    ' 'name' 열과 'elevation' 열 찾기
+    pasteNameCol = FindColumn(pasteWs, "name")
+    compareNameCol = FindColumn(compareWs, "name")
+    compareElevationCol = FindColumn(compareWs, "elevation")
+    pasteElevationCol = FindColumn(pasteWs, "elevation")
+    
+    If pasteNameCol = 0 Or compareNameCol = 0 Or compareElevationCol = 0 Or pasteElevationCol = 0 Then
+        MsgBox "열을 찾을 수 없습니다. 'name' 및 'elevation' 열이 존재하는지 확인하세요.", vbCritical
+        Exit Sub
+    End If
 
-    Set pasteName = pasteWs.Range("A1:A" & lastRowPaste)
-    Set compareName = compareWs.Range("A1:A" & lastRowCompare)
-    Set compareElevation = compareWs.Range("B1:B" & lastRowCompare) ' elevation 열이 B열에 있다고 가정
-
+    ' 데이터 비교 및 변경
     For i = 2 To lastRowPaste ' Assuming header row
         For j = 2 To lastRowCompare
-            If pasteName.Cells(i, 1).Value = compareName.Cells(j, 1).Value Then
-                If compareElevation.Cells(j, 1).Value <> "할증" Then
-                    pasteWs.Cells(i, 2).Value = "---" ' 붙여넣기 시트의 elevation 열이 B열에 있다고 가정
+            If pasteWs.Cells(i, pasteNameCol).Value = compareWs.Cells(j, compareNameCol).Value Then
+                If compareWs.Cells(j, compareElevationCol).Value <> "할증" Then
+                    pasteWs.Cells(i, pasteElevationCol).Value = "---"
                 End If
             End If
         Next j
     Next i
 End Sub
+
+Function FindColumn(ws As Worksheet, header As String) As Long
+    Dim cell As Range
+    For Each cell In ws.Rows(1).Cells
+        If cell.Value = header Then
+            FindColumn = cell.Column
+            Exit Function
+        End If
+    Next cell
+    FindColumn = 0 ' 헤더를 찾지 못한 경우
+End Function
