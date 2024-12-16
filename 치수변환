@@ -1,13 +1,15 @@
 Sub DynamicDataComparison()
-    Dim wsPaste As Worksheet, wsCompare As Worksheet
-    Dim rngPaste As Range, rngCompare As Range
+    Dim wsPaste As Worksheet, wsCompare As Worksheet, wsCondition As Worksheet
+    Dim rngPaste As Range, rngCompare As Range, rngCondition As Range
     Dim itemCol As Range, sizeCol As Range, nameCol As Range, widthCol As Range
     Dim compareNameCol As Range, compareWidthCol As Range
-    Dim lastRowPaste As Long, lastRowCompare As Long
-    Dim pasteRow As Long, compareRow As Long
+    Dim conditionSizeCol As Range, conditionSizeConvertCol As Range
+    Dim lastRowPaste As Long, lastRowCompare As Long, lastRowCondition As Long
+    Dim pasteRow As Long, compareRow As Long, conditionRow As Long
 
     Set wsPaste = ThisWorkbook.Sheets("붙여넣기")
     Set wsCompare = ThisWorkbook.Sheets("비교")
+    Set wsCondition = ThisWorkbook.Sheets("조건")
     
     ' 열 찾기
     Set itemCol = wsPaste.Rows(1).Find("item", , xlValues, xlWhole, , xlNext, False)
@@ -18,9 +20,15 @@ Sub DynamicDataComparison()
     Set compareNameCol = wsCompare.Rows(1).Find("name", , xlValues, xlWhole, , xlNext, False)
     Set compareWidthCol = wsCompare.Rows(1).Find("width", , xlValues, xlWhole, , xlNext, False)
     
-    If Not itemCol Is Nothing And Not sizeCol Is Nothing And Not nameCol Is Nothing And Not widthCol Is Nothing And Not compareNameCol Is Nothing And Not compareWidthCol Is Nothing Then
+    Set conditionSizeCol = wsCondition.Rows(1).Find("치수", , xlValues, xlWhole, , xlNext, False)
+    Set conditionSizeConvertCol = wsCondition.Rows(1).Find("치수변환", , xlValues, xlWhole, , xlNext, False)
+    
+    If Not itemCol Is Nothing And Not sizeCol Is Nothing And Not nameCol Is Nothing And Not widthCol Is Nothing _
+    And Not compareNameCol Is Nothing And Not compareWidthCol Is Nothing And Not conditionSizeCol Is Nothing _
+    And Not conditionSizeConvertCol Is Nothing Then
         lastRowPaste = wsPaste.Cells(wsPaste.Rows.Count, nameCol.Column).End(xlUp).Row
         lastRowCompare = wsCompare.Cells(wsCompare.Rows.Count, compareNameCol.Column).End(xlUp).Row
+        lastRowCondition = wsCondition.Cells(wsCondition.Rows.Count, conditionSizeCol.Column).End(xlUp).Row
         
         For pasteRow = 2 To lastRowPaste
             For compareRow = 2 To lastRowCompare
@@ -30,7 +38,12 @@ Sub DynamicDataComparison()
             Next compareRow
             
             If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "pipe", vbTextCompare) > 0 Then
-                wsPaste.Cells(pasteRow, widthCol.Column).Value = wsPaste.Cells(pasteRow, sizeCol.Column).Value
+                For conditionRow = 2 To lastRowCondition
+                    If StrComp(wsPaste.Cells(pasteRow, widthCol.Column).Value, wsCondition.Cells(conditionRow, conditionSizeCol.Column).Value, vbTextCompare) = 0 Then
+                        wsPaste.Cells(pasteRow, widthCol.Column).Value = wsCondition.Cells(conditionRow, conditionSizeConvertCol.Column).Value
+                        Exit For
+                    End If
+                Next conditionRow
             End If
         Next pasteRow
     Else
