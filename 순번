@@ -3,30 +3,44 @@ Public Sub UpdateSheetWithSequence()
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim compareWs As Worksheet
+    Dim conditionWs As Worksheet
     Dim dataDict As Object
+    Dim excludeDict As Object
     Dim rowIndex As Long
     Dim sequenceValue As String
 
     ' Dictionary 생성
     Set dataDict = CreateObject("Scripting.Dictionary")
+    Set excludeDict = CreateObject("Scripting.Dictionary")
+
+    ' 조건 시트에서 제외할 시트 목록 가져오기
+    Set conditionWs = ThisWorkbook.Worksheets("조건")
+    lastRow = conditionWs.Cells(conditionWs.Rows.Count, 1).End(xlUp).Row
+    For rowIndex = 2 To lastRow
+        Dim excludeSheet As String
+        excludeSheet = CleanString(conditionWs.Cells(rowIndex, FindColumn(conditionWs, "시트 제외")).Value) ' 조건 시트의 "시트 제외" 열 기준
+        If Len(excludeSheet) > 0 And Not excludeDict.exists(excludeSheet) Then
+            excludeDict.Add excludeSheet, True
+        End If
+    Next rowIndex
 
     ' 비교 시트 데이터 읽기
     Set compareWs = ThisWorkbook.Worksheets("비교")
     lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
     For rowIndex = 2 To lastRow
         Dim compareKey As String
-        compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
-                     CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
-                     CleanString(compareWs.Cells(rowIndex, 3).Value) ' Name, Width, Utility 기준
+        compareKey = CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "name")).Value) & "|" & _
+                     CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "width")).Value) & "|" & _
+                     CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "utility")).Value) ' Name, Width, Utility 기준
         If Not dataDict.exists(compareKey) Then
-            dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value ' 순번 값 저장
+            dataDict.Add compareKey, compareWs.Cells(rowIndex, FindColumn(compareWs, "순번")).Value ' 순번 값 저장
         End If
     Next rowIndex
 
     ' 모든 시트를 순회하며 데이터 업데이트
     For Each ws In ThisWorkbook.Worksheets
         ' 제외할 시트 목록에 포함되지 않은 시트만 처리
-        If ws.Name <> "비교" Then
+        If Not excludeDict.exists(ws.Name) Then
             On Error Resume Next
             
             ' 헤더 위치 동적으로 찾기
@@ -104,10 +118,10 @@ Public Function GetMatchingUtilityKey(utilityValue As String, compareWs As Works
     
     lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
     For rowIndex = 2 To lastRow
-        compareUtility = CleanString(compareWs.Cells(rowIndex, 3).Value)
+        compareUtility = CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "utility")).Value)
         If InStr(1, utilityValue, compareUtility, vbTextCompare) > 0 Then
-            GetMatchingUtilityKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
-                                    CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
+            GetMatchingUtilityKey = CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "name")).Value) & "|" & _
+                                    CleanString(compareWs.Cells(rowIndex, FindColumn(compareWs, "width")).Value) & "|" & _
                                     compareUtility
             matchFound = True
             Exit For
