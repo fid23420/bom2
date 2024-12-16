@@ -8,6 +8,15 @@ Public Sub UpdateSheetWithSequence()
     Dim excludeDict As Object
     Dim rowIndex As Long
     Dim sequenceValue As String
+    Dim debugFilePath As String
+    Dim debugFile As Integer
+
+    ' 디버깅 파일 경로 설정
+    debugFilePath = ThisWorkbook.Path & "\DebugOutput.txt"
+    debugFile = FreeFile
+    
+    ' 디버깅 파일 열기
+    Open debugFilePath For Output As #debugFile
 
     ' Dictionary 생성
     Set dataDict = CreateObject("Scripting.Dictionary")
@@ -19,10 +28,10 @@ Public Sub UpdateSheetWithSequence()
     For rowIndex = 2 To lastRow
         Dim excludeSheet As String
         excludeSheet = CleanString(conditionWs.Cells(rowIndex, 1).Value)
-        Debug.Print "Exclude Sheet: " & excludeSheet
+        Print #debugFile, "Exclude Sheet: " & excludeSheet
         If Len(excludeSheet) > 0 And Not excludeDict.exists(excludeSheet) Then
             excludeDict.Add excludeSheet, True
-            Debug.Print "Sheet added to exclusion: " & excludeSheet
+            Print #debugFile, "Sheet added to exclusion: " & excludeSheet
         End If
     Next rowIndex
 
@@ -36,20 +45,20 @@ Public Sub UpdateSheetWithSequence()
                      CleanString(compareWs.Cells(rowIndex, 3).Value)
         If Not dataDict.exists(compareKey) Then
             dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value
-            Debug.Print "Added to dataDict: " & compareKey
+            Print #debugFile, "Added to dataDict: " & compareKey & " with sequence: " & compareWs.Cells(rowIndex, 4).Value
         End If
     Next rowIndex
 
     ' 모든 시트를 순회하며 데이터 업데이트
     For Each ws In ThisWorkbook.Worksheets
-        Debug.Print "Processing Sheet: " & ws.Name
+        Print #debugFile, "Processing Sheet: " & ws.Name
         ' 제외할 시트 목록에 포함되지 않은 시트만 처리
         If excludeDict.exists(ws.Name) Then
-            Debug.Print "Sheet is excluded: " & ws.Name
+            Print #debugFile, "Sheet is excluded: " & ws.Name
             GoTo NextSheet
         End If
         
-        Debug.Print "Sheet is not excluded: " & ws.Name
+        Print #debugFile, "Sheet is not excluded: " & ws.Name
         On Error Resume Next
         
         ' 헤더 위치 동적으로 찾기
@@ -63,7 +72,7 @@ Public Sub UpdateSheetWithSequence()
         If seqCol = 0 Then
             seqCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column + 1
             ws.Cells(1, seqCol).Value = "순번"
-            Debug.Print "Added sequence column to: " & ws.Name
+            Print #debugFile, "Added sequence column to: " & ws.Name
         End If
         
         ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
@@ -82,20 +91,25 @@ Public Sub UpdateSheetWithSequence()
                 key = CleanString(ws.Cells(rowIndex, nameCol).Value) & "|" & _
                       CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
                       CleanString(Replace(ws.Cells(rowIndex, utilityCol).Value, " ", "")) ' 공백 제거
+                Print #debugFile, "Generated key for row " & rowIndex & ": " & key
                 
                 ' 매칭되는 키가 있는 경우 순번 값을 업데이트
                 If dataDict.exists(key) Then
                     ws.Cells(rowIndex, seqCol).Value = dataDict(key)
-                    Debug.Print "Updated sequence at row " & rowIndex & " in sheet " & ws.Name
+                    Print #debugFile, "Updated sequence at row " & rowIndex & " in sheet " & ws.Name & " with sequence: " & dataDict(key)
                 Else
                     ws.Cells(rowIndex, seqCol).Value = "N/A"
-                    Debug.Print "No match found for key: " & key
+                    Print #debugFile, "No match found for key: " & key & " at row " & rowIndex & " in sheet " & ws.Name
                 End If
             End If
         Next rowIndex
         
 NextSheet:
     Next ws
+    
+    ' 디버깅 파일 닫기
+    Close #debugFile
+    MsgBox "디버깅 완료. 결과는 DebugOutput.txt 파일을 확인하세요."
 End Sub
 
 Public Function FindColumn(ws As Worksheet, header As String) As Long
