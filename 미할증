@@ -19,10 +19,10 @@ Sub UpdateElevationData()
     lastRowCompare = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
     
     ' 'name' 열과 'elevation' 열 찾기
-    pasteNameCol = FindColumn(pasteWs, "name")
-    compareNameCol = FindColumn(compareWs, "name")
-    compareElevationCol = FindColumn(compareWs, "elevation")
-    pasteElevationCol = FindColumn(pasteWs, "elevation")
+    pasteNameCol = FindColumnIgnoreCase(pasteWs, "name")
+    compareNameCol = FindColumnIgnoreCase(compareWs, "name")
+    compareElevationCol = FindColumnIgnoreCase(compareWs, "elevation")
+    pasteElevationCol = FindColumnIgnoreCase(pasteWs, "elevation")
     
     If pasteNameCol = 0 Or compareNameCol = 0 Or compareElevationCol = 0 Or pasteElevationCol = 0 Then
         MsgBox "열을 찾을 수 없습니다. 'name' 및 'elevation' 열이 존재하는지 확인하세요.", vbCritical
@@ -32,8 +32,8 @@ Sub UpdateElevationData()
     ' 데이터 비교 및 변경
     For i = 2 To lastRowPaste ' Assuming header row
         For j = 2 To lastRowCompare
-            If pasteWs.Cells(i, pasteNameCol).Value = compareWs.Cells(j, compareNameCol).Value Then
-                If compareWs.Cells(j, compareElevationCol).Value <> "할증" Then
+            If LCase(pasteWs.Cells(i, pasteNameCol).Value) = LCase(compareWs.Cells(j, compareNameCol).Value) Then
+                If LCase(compareWs.Cells(j, compareElevationCol).Value) <> "할증" Then
                     pasteWs.Cells(i, pasteElevationCol).Value = "---"
                 End If
             End If
@@ -41,13 +41,13 @@ Sub UpdateElevationData()
     Next i
 End Sub
 
-Function FindColumn(ws As Worksheet, header As String) As Long
+Function FindColumnIgnoreCase(ws As Worksheet, header As String) As Long
     Dim cell As Range
     For Each cell In ws.Rows(1).Cells
-        If cell.Value = header Then
-            FindColumn = cell.Column
+        If LCase(cell.Value) = LCase(header) Then
+            FindColumnIgnoreCase = cell.Column
             Exit Function
         End If
     Next cell
-    FindColumn = 0 ' 헤더를 찾지 못한 경우
+    FindColumnIgnoreCase = 0 ' 헤더를 찾지 못한 경우
 End Function
