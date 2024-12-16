@@ -7,6 +7,7 @@ Public Sub UpdateSheetWithSequence()
     Dim dataDict As Object
     Dim excludeDict As Object
     Dim rowIndex As Long
+    Dim sequenceCol As Long
     Dim sequenceValue As String
     Dim debugFilePath As String
     Dim debugFile As Integer
@@ -38,14 +39,19 @@ Public Sub UpdateSheetWithSequence()
     ' 비교 시트 데이터 읽기
     Set compareWs = ThisWorkbook.Worksheets("비교")
     lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
+    sequenceCol = FindColumn(compareWs, "순번")
+    If sequenceCol = 0 Then
+        MsgBox "비교 시트에서 순번 열을 찾을 수 없습니다.", vbExclamation
+        Exit Sub
+    End If
     For rowIndex = 2 To lastRow
         Dim compareKey As String
         compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) & "|" & _
                      CleanString(compareWs.Cells(rowIndex, 2).Value) & "|" & _
                      CleanString(compareWs.Cells(rowIndex, 3).Value)
         If Not dataDict.exists(compareKey) Then
-            dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value
-            Print #debugFile, "Added to dataDict: " & compareKey & " with sequence: " & compareWs.Cells(rowIndex, 4).Value
+            dataDict.Add compareKey, compareWs.Cells(rowIndex, sequenceCol).Value
+            Print #debugFile, "Added to dataDict: " & compareKey & " with sequence: " & compareWs.Cells(rowIndex, sequenceCol).Value
         End If
     Next rowIndex
 
