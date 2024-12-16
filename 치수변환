@@ -1,0 +1,39 @@
+Sub DynamicDataComparison()
+    Dim wsPaste As Worksheet, wsCompare As Worksheet
+    Dim rngPaste As Range, rngCompare As Range
+    Dim itemCol As Range, sizeCol As Range, nameCol As Range, widthCol As Range
+    Dim compareNameCol As Range, compareWidthCol As Range
+    Dim lastRowPaste As Long, lastRowCompare As Long
+    Dim pasteRow As Long, compareRow As Long
+
+    Set wsPaste = ThisWorkbook.Sheets("붙여넣기")
+    Set wsCompare = ThisWorkbook.Sheets("비교")
+    
+    ' 열 찾기
+    Set itemCol = wsPaste.Rows(1).Find("item", , xlValues, xlWhole, , xlNext, False)
+    Set sizeCol = wsPaste.Rows(1).Find("size", , xlValues, xlWhole, , xlNext, False)
+    Set nameCol = wsPaste.Rows(1).Find("name", , xlValues, xlWhole, , xlNext, False)
+    Set widthCol = wsPaste.Rows(1).Find("width/diameter", , xlValues, xlWhole, , xlNext, False)
+    
+    Set compareNameCol = wsCompare.Rows(1).Find("name", , xlValues, xlWhole, , xlNext, False)
+    Set compareWidthCol = wsCompare.Rows(1).Find("width", , xlValues, xlWhole, , xlNext, False)
+    
+    If Not itemCol Is Nothing And Not sizeCol Is Nothing And Not nameCol Is Nothing And Not widthCol Is Nothing And Not compareNameCol Is Nothing And Not compareWidthCol Is Nothing Then
+        lastRowPaste = wsPaste.Cells(wsPaste.Rows.Count, nameCol.Column).End(xlUp).Row
+        lastRowCompare = wsCompare.Cells(wsCompare.Rows.Count, compareNameCol.Column).End(xlUp).Row
+        
+        For pasteRow = 2 To lastRowPaste
+            For compareRow = 2 To lastRowCompare
+                If StrComp(wsPaste.Cells(pasteRow, nameCol.Column).Value, wsCompare.Cells(compareRow, compareNameCol.Column).Value, vbTextCompare) = 0 Then
+                    wsPaste.Cells(pasteRow, widthCol.Column).Value = wsCompare.Cells(compareRow, compareWidthCol.Column).Value
+                End If
+            Next compareRow
+            
+            If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "pipe", vbTextCompare) > 0 Then
+                wsPaste.Cells(pasteRow, widthCol.Column).Value = wsPaste.Cells(pasteRow, sizeCol.Column).Value
+            End If
+        Next pasteRow
+    Else
+        MsgBox "필요한 열을 찾을 수 없습니다.", vbExclamation
+    End If
+End Sub
