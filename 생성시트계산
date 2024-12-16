@@ -12,20 +12,6 @@ Public Sub UpdateSheetData()
     Set dataDict = CreateObject("Scripting.Dictionary")
     Set keysAdded = CreateObject("Scripting.Dictionary")
 
-    ' 비교 시트 데이터 읽기
-    Dim compareWs As Worksheet
-    Set compareWs = ThisWorkbook.Worksheets("비교")
-    Dim compareDict As Object
-    Set compareDict = CreateObject("Scripting.Dictionary")
-    lastRow = compareWs.Cells(compareWs.Rows.Count, 1).End(xlUp).Row
-    For rowIndex = 2 To lastRow
-        Dim compareKey As String
-        compareKey = CleanString(compareWs.Cells(rowIndex, 1).Value) ' 비교 시트의 "name" 열 기준
-        If Not compareDict.exists(compareKey) Then
-            compareDict.Add compareKey, rowIndex ' 행 번호를 저장
-        End If
-    Next rowIndex
-
     ' 모든 시트를 순회하며 데이터 업데이트
     For Each ws In ThisWorkbook.Worksheets
         On Error Resume Next
@@ -56,35 +42,27 @@ Public Sub UpdateSheetData()
                 If Len(Trim(ws.Cells(rowIndex, nameCol).Value)) > 0 Then ' "Name" 열이 비어 있지 않은 경우
                     key = CleanString(ws.Cells(rowIndex, nameCol).Value) ' 기본적으로 이름을 키로 사용
                     
-                    ' 비교 시트에서 매칭되는지 확인
-                    If compareDict.exists(key) Then
-                        Dim compareRow As Long
-                        compareRow = compareDict(key)
-                        ' "비교" 시트의 I 열 값 확인
-                        If InStr(1, LCase(compareWs.Cells(compareRow, 9).Value), "할증") = 0 Then
-                            ' 키 생성: 각 값을 공백 제거하고 연결하여 고유 키 생성
-                            key = key & "|" & _
-                                  CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
-                                  CleanString(ws.Cells(rowIndex, utilityCol).Value)
-                            
-                            ' Length 값을 가져옴 (elevation 제외)
-                            If IsNumeric(ws.Cells(rowIndex, lengthCol).Value) Then
-                                lengthValue = CDbl(ws.Cells(rowIndex, lengthCol).Value)
-                                
-                                ' "Item"이 "Pipe"인 경우 Length 값을 1000으로 나누고 소수점 3번째 자리 이후 버리고 소수점 첫째 자리까지 반올림
-                                If Trim(LCase(ws.Cells(rowIndex, itemCol).Value)) = "pipe" Then
-                                    lengthValue = lengthValue / 1000
-                                    lengthValue = WorksheetFunction.RoundDown(lengthValue * 100, 0) / 100
-                                    lengthValue = WorksheetFunction.Round(lengthValue, 1)
-                                End If
-                                
-                                ' 합산 로직 수행
-                                If dataDict.exists(key) Then
-                                    dataDict(key) = dataDict(key) + lengthValue
-                                Else
-                                    dataDict.Add key, lengthValue
-                                End If
-                            End If
+                    ' 키 생성: 각 값을 공백 제거하고 연결하여 고유 키 생성
+                    key = key & "|" & _
+                          CleanString(ws.Cells(rowIndex, widthCol).Value) & "|" & _
+                          CleanString(ws.Cells(rowIndex, utilityCol).Value)
+                    
+                    ' Length 값을 가져옴 (elevation 제외)
+                    If IsNumeric(ws.Cells(rowIndex, lengthCol).Value) Then
+                        lengthValue = CDbl(ws.Cells(rowIndex, lengthCol).Value)
+                        
+                        ' "Item"이 "Pipe"인 경우 Length 값을 1000으로 나누고 소수점 3번째 자리 이후 버리고 소수점 첫째 자리까지 반올림
+                        If Trim(LCase(ws.Cells(rowIndex, itemCol).Value)) = "pipe" Then
+                            lengthValue = lengthValue / 1000
+                            lengthValue = WorksheetFunction.RoundDown(lengthValue * 100, 0) / 100
+                            lengthValue = WorksheetFunction.Round(lengthValue, 1)
+                        End If
+                        
+                        ' 합산 로직 수행
+                        If dataDict.exists(key) Then
+                            dataDict(key) = dataDict(key) + lengthValue
+                        Else
+                            dataDict.Add key, lengthValue
                         End If
                     End If
                 End If
