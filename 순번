@@ -19,8 +19,10 @@ Public Sub UpdateSheetWithSequence()
     For rowIndex = 2 To lastRow
         Dim excludeSheet As String
         excludeSheet = CleanString(conditionWs.Cells(rowIndex, 1).Value) ' 조건 시트의 "시트 제외" 열 기준
+        Debug.Print "Exclude Sheet: " & excludeSheet ' 디버그 메시지 추가
         If Len(excludeSheet) > 0 And Not excludeDict.exists(excludeSheet) Then
             excludeDict.Add excludeSheet, True
+            Debug.Print "Sheet added to exclusion: " & excludeSheet ' 디버그 메시지 추가
         End If
     Next rowIndex
 
@@ -34,13 +36,16 @@ Public Sub UpdateSheetWithSequence()
                      CleanString(compareWs.Cells(rowIndex, 3).Value) ' Name, Width, Utility 기준
         If Not dataDict.exists(compareKey) Then
             dataDict.Add compareKey, compareWs.Cells(rowIndex, 4).Value ' 순번 값 저장
+            Debug.Print "Added to dataDict: " & compareKey ' 디버그 메시지 추가
         End If
     Next rowIndex
 
     ' 모든 시트를 순회하며 데이터 업데이트
     For Each ws In ThisWorkbook.Worksheets
+        Debug.Print "Processing Sheet: " & ws.Name ' 디버그 메시지 추가
         ' 제외할 시트 목록에 포함되지 않은 시트만 처리
         If Not excludeDict.exists(ws.Name) Then
+            Debug.Print "Sheet is not excluded: " & ws.Name ' 디버그 메시지 추가
             On Error Resume Next
             
             ' 헤더 위치 동적으로 찾기
@@ -54,6 +59,7 @@ Public Sub UpdateSheetWithSequence()
             If seqCol = 0 Then
                 seqCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column + 1
                 ws.Cells(1, seqCol).Value = "순번"
+                Debug.Print "Added sequence column to: " & ws.Name ' 디버그 메시지 추가
             End If
             
             ' 각 열이 발견되지 않은 경우 메시지를 출력하고 다음 시트로 이동
@@ -81,6 +87,8 @@ Public Sub UpdateSheetWithSequence()
                 End If
             Next rowIndex
             
+        Else
+            Debug.Print "Sheet is excluded: " & ws.Name ' 디버그 메시지 추가
         End If
 NextSheet:
     Next ws
