@@ -53,6 +53,7 @@ Sub DynamicDataComparisonOptimized()
         ' 조건 데이터 딕셔너리로 저장
         For conditionRow = 2 To lastRowCondition
             conditionSize = Trim(wsCondition.Cells(conditionRow, conditionSizeCol.Column).Value)
+            logFile.WriteLine "치수 데이터 추가: " & conditionSize & " -> " & wsCondition.Cells(conditionRow, conditionSizeConvertCol.Column).Value
             If Not conditionDict.exists(conditionSize) Then
                 conditionDict(conditionSize) = wsCondition.Cells(conditionRow, conditionSizeConvertCol.Column).Value
             End If
