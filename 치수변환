@@ -87,9 +87,14 @@ Sub DynamicDataComparisonOptimized()
                 
                 ' pipe 항목 처리
                 If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "pipe", vbTextCompare) > 0 Then
-                    If conditionDict.exists(Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value)) Then
-                        wsPaste.Cells(pasteRow, widthCol.Column).Value = conditionDict(Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value))
-                        logFile.WriteLine "파이프 항목 업데이트: " & pasteName & " (" & wsPaste.Cells(pasteRow, widthCol.Column).Value & ") -> " & conditionDict(Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value))
+                    Dim widthValue As String
+                    widthValue = Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value)
+                    logFile.WriteLine "파이프 항목 확인: " & pasteName & " (" & widthValue & ")"
+                    If conditionDict.exists(widthValue) Then
+                        wsPaste.Cells(pasteRow, widthCol.Column).Value = conditionDict(widthValue)
+                        logFile.WriteLine "파이프 항목 업데이트: " & pasteName & " (" & widthValue & ") -> " & conditionDict(widthValue)
+                    Else
+                        logFile.WriteLine "치수 변환 값이 없습니다: " & widthValue
                     End If
                 End If
             End If
