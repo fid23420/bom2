@@ -91,6 +91,7 @@ Sub DynamicDataComparisonOptimized()
                     widthValue = Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value)
                     logFile.WriteLine "파이프 항목 확인: " & pasteName & " (" & widthValue & ")"
                     If conditionDict.exists(widthValue) Then
+                        logFile.WriteLine "치수 변환 값 존재: " & widthValue & " -> " & conditionDict(widthValue)
                         wsPaste.Cells(pasteRow, widthCol.Column).Value = conditionDict(widthValue)
                         logFile.WriteLine "파이프 항목 업데이트: " & pasteName & " (" & widthValue & ") -> " & conditionDict(widthValue)
                     Else
