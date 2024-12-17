@@ -2,11 +2,11 @@ Sub DynamicDataComparisonOptimized()
     Dim wsPaste As Worksheet, wsCompare As Worksheet, wsCondition As Worksheet
     Dim itemCol As Range, sizeCol As Range, nameCol As Range, widthCol As Range
     Dim compareNameCol As Range, compareWidthCol As Range
-    Dim conditionSizeCol As Range, conditionSizeConvertCol As Range
+    Dim conditionSizeCol As Range, conditionSizeConvertCol As Range, conditionOtherCol As Range
     Dim lastRowPaste As Long, lastRowCompare As Long, lastRowCondition As Long
     Dim pasteRow As Long, compareRow As Long, conditionRow As Long
-    Dim nameDict As Object, conditionDict As Object
-    Dim pasteName As String, compareName As String, conditionSize As String
+    Dim nameDict As Object, conditionDict As Object, otherNameDict As Object
+    Dim pasteName As String, compareName As String, conditionSize As String, otherName As String
 
     Set wsPaste = ThisWorkbook.Sheets("붙여넣기")
     Set wsCompare = ThisWorkbook.Sheets("비교")
@@ -15,6 +15,7 @@ Sub DynamicDataComparisonOptimized()
     ' 딕셔너리 초기화
     Set nameDict = CreateObject("Scripting.Dictionary")
     Set conditionDict = CreateObject("Scripting.Dictionary")
+    Set otherNameDict = CreateObject("Scripting.Dictionary")
     
     ' 열 찾기
     Set itemCol = wsPaste.Rows(1).Find("item", , xlValues, xlWhole, , xlNext, False)
@@ -27,13 +28,14 @@ Sub DynamicDataComparisonOptimized()
     
     Set conditionSizeCol = wsCondition.Rows(1).Find("치수", , xlValues, xlWhole, , xlNext, False)
     Set conditionSizeConvertCol = wsCondition.Rows(1).Find("치수변환", , xlValues, xlWhole, , xlNext, False)
+    Set conditionOtherCol = wsCondition.Rows(1).Find("기타", , xlValues, xlWhole, , xlNext, False)
     
     If Not itemCol Is Nothing And Not sizeCol Is Nothing And Not nameCol Is Nothing And Not widthCol Is Nothing _
     And Not compareNameCol Is Nothing And Not compareWidthCol Is Nothing And Not conditionSizeCol Is Nothing _
-    And Not conditionSizeConvertCol Is Nothing Then
+    And Not conditionSizeConvertCol Is Nothing And Not conditionOtherCol Is Nothing Then
         lastRowPaste = wsPaste.Cells(wsPaste.Rows.Count, nameCol.Column).End(xlUp).Row
         lastRowCompare = wsCompare.Cells(wsCompare.Rows.Count, compareNameCol.Column).End(xlUp).Row
-        lastRowCondition = wsCondition.Cells(wsCondition.Rows.Count, conditionSizeCol.Column).End(xlUp).Row
+        lastRowCondition = wsCondition.Cells(wsCondition.Rows.Count, conditionOtherCol.Column).End(xlUp).Row
         
         ' 비교 데이터 딕셔너리로 저장
         For compareRow = 2 To lastRowCompare
@@ -51,16 +53,36 @@ Sub DynamicDataComparisonOptimized()
             End If
         Next conditionRow
         
+        ' 기타 항목 데이터 딕셔너리로 저장
+        For conditionRow = conditionOtherCol.Row + 1 To lastRowCondition
+            otherName = Trim(wsCondition.Cells(conditionRow, conditionOtherCol.Column).Value)
+            If Not otherNameDict.exists(otherName) Then
+                otherNameDict(otherName) = True
+            End If
+        Next conditionRow
+        
         ' 붙여넣기 데이터 처리
         For pasteRow = 2 To lastRowPaste
             pasteName = Trim(wsPaste.Cells(pasteRow, nameCol.Column).Value)
-            If nameDict.exists(pasteName) Then
-                wsPaste.Cells(pasteRow, widthCol.Column).Value = nameDict(pasteName)
-            End If
             
-            If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "pipe", vbTextCompare) > 0 Then
-                If conditionDict.exists(wsPaste.Cells(pasteRow, widthCol.Column).Value) Then
-                    wsPaste.Cells(pasteRow, widthCol.Column).Value = conditionDict(wsPaste.Cells(pasteRow, widthCol.Column).Value)
+            ' 기타 항목 처리
+            If otherNameDict.exists(pasteName) Then
+                If nameDict.exists(pasteName) Then
+                    wsPaste.Cells(pasteRow, widthCol.Column).Value = nameDict(pasteName)
+                End If
+            Else
+                ' component 항목 처리
+                If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "component", vbTextCompare) > 0 Then
+                    If nameDict.exists(pasteName) Then
+                        wsPaste.Cells(pasteRow, widthCol.Column).Value = nameDict(pasteName)
+                    End If
+                End If
+                
+                ' pipe 항목 처리
+                If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "pipe", vbTextCompare) > 0 Then
+                    If conditionDict.exists(wsPaste.Cells(pasteRow, widthCol.Column).Value) Then
+                        wsPaste.Cells(pasteRow, widthCol.Column).Value = conditionDict(wsPaste.Cells(pasteRow, widthCol.Column).Value)
+                    End If
                 End If
             End If
         Next pasteRow
