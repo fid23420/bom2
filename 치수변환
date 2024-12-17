@@ -7,10 +7,15 @@ Sub DynamicDataComparisonOptimized()
     Dim pasteRow As Long, compareRow As Long, conditionRow As Long
     Dim nameDict As Object, conditionDict As Object, otherNameDict As Object
     Dim pasteName As String, compareName As String, conditionSize As String, otherName As String
+    Dim logFile As Object, filePath As String
 
     Set wsPaste = ThisWorkbook.Sheets("붙여넣기")
     Set wsCompare = ThisWorkbook.Sheets("비교")
     Set wsCondition = ThisWorkbook.Sheets("조건")
+    
+    ' 로그 파일 경로 설정
+    filePath = ThisWorkbook.Path & "\DebugLog.txt"
+    Set logFile = CreateObject("Scripting.FileSystemObject").OpenTextFile(filePath, 2, True)
     
     ' 딕셔너리 초기화
     Set nameDict = CreateObject("Scripting.Dictionary")
@@ -69,24 +74,31 @@ Sub DynamicDataComparisonOptimized()
             If otherNameDict.exists(pasteName) Then
                 If nameDict.exists(pasteName) Then
                     wsPaste.Cells(pasteRow, widthCol.Column).Value = nameDict(pasteName)
+                    logFile.WriteLine "기타 항목 업데이트: " & pasteName & " -> " & nameDict(pasteName)
                 End If
             Else
                 ' component 항목 처리
                 If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "component", vbTextCompare) > 0 Then
                     If nameDict.exists(pasteName) Then
                         wsPaste.Cells(pasteRow, widthCol.Column).Value = nameDict(pasteName)
+                        logFile.WriteLine "컴포넌트 항목 업데이트: " & pasteName & " -> " & nameDict(pasteName)
                     End If
                 End If
                 
                 ' pipe 항목 처리
                 If InStr(1, wsPaste.Cells(pasteRow, itemCol.Column).Value, "pipe", vbTextCompare) > 0 Then
-                    If conditionDict.exists(wsPaste.Cells(pasteRow, widthCol.Column).Value) Then
-                        wsPaste.Cells(pasteRow, widthCol.Column).Value = conditionDict(wsPaste.Cells(pasteRow, widthCol.Column).Value)
+                    If conditionDict.exists(Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value)) Then
+                        wsPaste.Cells(pasteRow, widthCol.Column).Value = conditionDict(Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value))
+                        logFile.WriteLine "파이프 항목 업데이트: " & pasteName & " (" & wsPaste.Cells(pasteRow, widthCol.Column).Value & ") -> " & conditionDict(Trim(wsPaste.Cells(pasteRow, widthCol.Column).Value))
                     End If
                 End If
             End If
         Next pasteRow
+        
     Else
         MsgBox "필요한 열을 찾을 수 없습니다.", vbExclamation
     End If
+    
+    logFile.Close
+    MsgBox "디버그 로그가 저장되었습니다: " & filePath, vbInformation
 End Sub
