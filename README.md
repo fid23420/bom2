@@ -1,75 +1,103 @@
-Sub UpdateQuantity()
-    Dim wsActive As Worksheet
-    Dim wsTarget As Worksheet
+Sub FilterAndCopyData()
+    Dim sourceWorkbook As Workbook
+    Dim targetWorkbook As Workbook
+    Dim sourceSheet As Worksheet
+    Dim targetSheet As Worksheet
+    Dim sourceFilePath As String
+    Dim targetFilePath As String
+    Dim folderPath As String
+    Dim keyword As String
+    Dim fileName As String
+    Dim cell As Range
     Dim lastRow As Long
-    Dim lastCol As Long
-    Dim i As Long, j As Long
-    Dim headerRow As Long
-    Dim code As String
-    Dim length As Double
-    Dim elevation As String
+    Dim copyRange As Range
     Dim targetRow As Long
-    Dim colToUpdate As String
-    Dim codeCol As Long, lengthCol As Long, elevationCol As Long
-    
-    ' 활성화 시트와 타겟 시트 설정
-    Set wsActive = ActiveSheet
-    Set wsTarget = Worksheets("섬시트")
-    
-    ' 활성화 시트의 마지막 행 및 마지막 열 찾기
-    lastRow = wsActive.Cells(wsActive.Rows.Count, "A").End(xlUp).Row
-    lastCol = wsActive.Cells(1, wsActive.Columns.Count).End(xlToLeft).Column
-    
-    ' 헤더 행 찾기 (일반적으로 1행이라고 가정)
-    headerRow = 1
-    
-    ' 헤더 열 위치 찾기
-    For j = 1 To lastCol
-        Select Case Trim(LCase(wsActive.Cells(headerRow, j).Value))
-            Case "code"
-                codeCol = j
-            Case "length"
-                lengthCol = j
-            Case "elevation"
-                elevationCol = j
-        End Select
-    Next j
-    
-    ' 활성화 시트의 데이터를 순회
-    For i = 2 To lastRow
-        code = wsActive.Cells(i, codeCol).Value
+    Dim checkDate As Date
+    Dim currentRow As Long
+    Dim prevDate As Date
+
+    ' 설정
+    folderPath = "C:\Users\sk22.id\Downloads\관리대장\"
+    targetFilePath = "C:\Users\sk22.id\Downloads\관리대장\3붙.xlsx"
+    keyword = "보고서" ' 원하는 키워드를 여기에 직접 입력
+
+    ' 폴더에서 키워드 포함 파일 찾기
+    fileName = Dir(folderPath & "*" & keyword & "*.xlsx")
+
+    If fileName = "" Then
+        MsgBox "지정된 키워드에 해당하는 파일이 없습니다.", vbExclamation
+        Exit Sub
+    End If
+
+    ' 소스 워크북 열기
+    sourceFilePath = folderPath & fileName
+    Set sourceWorkbook = Workbooks.Open(sourceFilePath)
+    Set sourceSheet = sourceWorkbook.Sheets("관리대장")
+
+    ' 대상 워크북 열기
+    If Dir(targetFilePath) = "" Then
+        Set targetWorkbook = Workbooks.Add
+        targetWorkbook.SaveAs targetFilePath
+    Else
+        Set targetWorkbook = Nothing
         On Error Resume Next
-        length = wsActive.Cells(i, lengthCol).Value
+        Set targetWorkbook = Workbooks(targetFilePath)
         On Error GoTo 0
-        elevation = wsActive.Cells(i, elevationCol).Value
-        
-        ' 타겟 시트에서 일치하는 code의 행 찾기
-        targetRow = 0
-        On Error Resume Next
-        targetRow = Application.WorksheetFunction.Match(code, wsTarget.Columns("F"), 0)
-        On Error GoTo 0
-        
-        ' 일치하는 행이 있을 경우
-        If targetRow > 0 Then
-            Select Case elevation
-                Case "---"
-                    colToUpdate = "H"
-                Case "고소작업 10% 할증"
-                    colToUpdate = "J"
-                Case "고소작업 20% 할증"
-                    colToUpdate = "K"
-                Case "고소10%+유해10%"
-                    colToUpdate = "L"
-                Case "고소20%+유해10%"
-                    colToUpdate = "M"
-                Case Else
-                    colToUpdate = ""
-            End Select
-            
-            If colToUpdate <> "" Then
-                ' 길이를 합산하지 않고 그대로 입력
-                wsTarget.Cells(targetRow, colToUpdate).Value = length
-            End If
+        If targetWorkbook Is Nothing Then
+            Set targetWorkbook = Workbooks.Open(targetFilePath, ReadOnly:=False)
         End If
-    Next i
+    End If
+
+    ' "P4" 시트 확인 및 설정
+    On Error Resume Next
+    Set targetSheet = targetWorkbook.Sheets("P4")
+    On Error GoTo 0
+
+    If targetSheet Is Nothing Then
+        MsgBox "P4 시트가 없습니다. 작업을 중단합니다.", vbExclamation
+        sourceWorkbook.Close False
+        Exit Sub
+    End If
+
+    ' P4 시트 초기화
+    targetSheet.Cells.Clear
+
+    ' 필터 기준 설정
+    checkDate = Date - 7
+
+    ' 마지막 행 가져오기
+    lastRow = sourceSheet.Cells(sourceSheet.Rows.Count, "B").End(xlUp).Row
+
+    ' 데이터 필터링 및 복사
+    targetRow = 1 ' P4 시트 처음부터 출력
+    prevDate = 0 ' 이전 날짜 초기화
+
+    For currentRow = 2 To lastRow ' 헤더 제외
+        With sourceSheet
+            If IsDate(.Cells(currentRow, "B")) Then
+                If .Cells(currentRow, "B").Value >= checkDate Then
+                    If InStr(.Cells(currentRow, "H"), "5D") = 0 And InStr(.Cells(currentRow, "H"), "출도") = 0 Then
+                        ' 날짜가 변경되었으면 공백 행 추가
+                        If .Cells(currentRow, "B").Value <> prevDate Then
+                            targetSheet.Cells(targetRow, 1).EntireRow.Insert
+                            targetRow = targetRow + 1
+                        End If
+
+                        ' 복사 범위 설정 (B~V 열)
+                        targetSheet.Cells(targetRow, 1).Resize(, 21).Value = .Cells(currentRow, "B").Resize(, 21).Value
+                        targetRow = targetRow + 1
+
+                        ' 이전 날짜 갱신
+                        prevDate = .Cells(currentRow, "B").Value
+                    End If
+                End If
+            End If
+        End With
+    Next currentRow
+
+    ' 워크북 저장 (열린 상태 유지)
+    targetWorkbook.Save
+    sourceWorkbook.Close False
+
+    MsgBox "데이터 복사가 완료되었습니다.", vbInformation
 End Sub
